@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="#-中文版">中文版</a> | <a href="#-english-version">English Version</a>
+  <a href="#-中文版">中文版</a> | <a href="#-english-version">English Version</a>| <a href="#-日本語版">日本語版</a>
 </p>
 
 ---
@@ -213,6 +213,133 @@ python main.py
 <img width="300" alt="march7_ai_bot_qrcode" src="https://github.com/user-attachments/assets/265ae68e-d3bc-4833-8556-746ffc6aac6d" />
 
 > **March 7th's Ramblings**:
+
+##  English Version
+---
+# 📷 三月なのか助手 Telegram Bot
+
+> 「毎日新しい思い出を作ろう！ふふ、パイオニア、一緒に写真撮ろうよ～」
+
+このTelegram BotはPythonで開発され、**Groq API**（Llama-3.3/Mixtral）と連携しています。ただのAIではなく、元気いっぱいで写真好きの**三月なのか**そのもの！
+
+---
+## ✨ 主な機能
+
+- **エネルギッシュな会話**: 三月なのかの性格を深く再現し、彼女の思考や行動を詳細に描写します。
+
+- **ダイナミックメモリー**: 最近の会話をいくつか記憶し、会話の「空白」を解消します。
+
+- **愛情システム**: あなたの言葉が彼女の気分や愛情度に影響を与えます。愛情度が高くなるとサプライズが待っています！
+
+
+- **BYOKモード**: 「内蔵エネルギー」に対応しています。パブリッククォータを消費することなく、ご自身のGroqトークンを入力して実行できます。
+
+- **デュアルモード切り替え**: LlamaモードとMixtralモードを自由に切り替えることができます。
+
+---
+
+## 🛠️ コマンドマニュアル（コマンドをクリックすると直接実行されます）
+
+ボットのチャットボックスでは、以下の「パイオニア限定」コマンドを使用できます。
+
+| コマンド | 機能説明 |
+
+| :--- | :--- |
+
+| `/start` | 三月なのかに目覚めて冒険を始めましょう！ |
+
+| `/help` | 詳細なグラフィカルメニューを表示します。 |
+
+| `/setkey` | **[重要]** ご自身のGroqトークンをバインドしてください（プライベートメッセージで送信することをお勧めします）。 |
+
+| `/aris` | 長時間会話モードを有効にします。この女の子はあなたと無制限にチャットします。 |
+
+| `/model` | ブレインモデルを切り替えます（`fast`ラマ / `smart`）。 |
+
+| `/reset` | メモリをフォーマットします。このボットが故障した場合は、これを使って修復してください！ | | `/ask` | 素早く質問できます。このモードはメモリをあまり消費しません。 |
+
+---
+
+## 🚀 クイックスタートガイド
+
+初めてご利用の場合は、以下の手順に従ってください。
+
+1. **ボットを見つける**: パイオニアの皆様は、ページ下部のリンクをクリックするか、QRコードをスキャンするか、Telegramで`@march7_ai_bot`を検索して`Start`をクリックしてください。
+
+2. **電源を設定する（オプション）**: このボットを常に稼働させるには、[Groq Cloud](https://console.groq.com/keys)で無料のAPIキーを申請することをお勧めします。
+
+
+3. **キーバインド（任意）**: プライベートメッセージでボットに `/setkey gsk_yourKey` と送信してください。
+
+4. **チャット開始**: 直接メッセージを送信するか、`/aris` で彼女をからかってみましょう！
+
+
+<img width="579" height="760" alt="スクリーンショット 2026-04-05 170816" src="https://github.com/user-attachments/assets/240c01b0-cd30-48db-b298-597761b25392" />
+
+---
+
+## 📝 開発者向けノート（デプロイ方法）
+
+三月なのかボットを自分でセットアップする場合は、以下の手順を参照してください。
+
+### 1. リポジトリのクローン
+
+```bash
+git clone https://github.com/aruxmmm/march7-telegram-bot.git
+
+cd march7-telegram-bot
+
+```
+
+### 2. 依存関係のインストール
+
+お使いのコンピュータにPython 3.10以降がインストールされていることを確認し、以下のコマンドを実行してください。ターミナル:
+
+```bash
+pip install -r requirements.txt
+
+```
+
+### 3. 環境変数の設定
+
+ローカルに新しい `.env` ファイルを作成するか、クラウドプラットフォーム (Railway/HuggingFace など) の設定ページに以下の変数を追加してください。
+
+| 変数名 | 取得チャネル | 説明 |
+
+| :--- | :--- | :--- |
+
+| `TELEGRAM_TOKEN` | [@BotFather](https://t.me/Botfather) | ボットのIDトークン |
+
+| `GROQ_API_KEY` | [Groq Console](https://console.groq.com/keys) | AI Brainのエネルギーキー |
+
+
+### 4. プログラムの実行
+
+```bash
+python main.py
+
+```
+
+---
+
+## 📅 更新履歴
+
+- **V0.1**: 基本的な対話ロジック、アフィニティシステム、およびコンテキストメモリ機能が利用可能になりました。
+
+
+- *絵文字の送信や、親密度に基づいたストーリー展開など、その他の機能も開発中です…* 📷
+
+---
+
+## 📸 コードをスキャンして冒険を始めましょう
+
+<img width="300" alt="march7_ai_bot_qrcode" src="https://github.com/user-attachments/assets/265ae68e-d3bc-4833-8556-746ffc6aac6d" />
+
+> **三月なのかのつぶやき**:
+
+> 「ねえ、GitHubのみんな、僕に**スター**をくれるのを忘れないでね！そうしないと、次の写真で君をぼかしちゃうよ！」 📸
+
+[![Telegram] Bot](https://img.shields.io/badge/Telegram-Bot-blue?style=for-the-badge&logo=telegram)](https://t.me/march7_ai_bot)
 
 > "Hey, that place called GitHub, remember to give me a **Star**! Otherwise, I'll blur you in the next photo!" 📸
 
