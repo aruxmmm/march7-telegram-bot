@@ -1,3 +1,8 @@
+<p align="center">
+  <a href="#-中文版">中文版</a> | <a href="#-english-version">English Version</a>
+</p>
+
+---
 # 📷 March 7th Telegram Bot (三月七助手)
 
 > “每一天都要留下新的记忆！嘿嘿，开拓者，快来和我合影吧～”
@@ -87,6 +92,129 @@ python main.py
 
 > **三月七的碎碎念**：
 > “喂，那个叫 GitHub 的地方，记得给本姑娘点个 **Star** 哦！不然下次合照我就把你拍糊掉！” 📸
+
+[![Telegram Bot](https://img.shields.io/badge/Telegram-Bot-blue?style=for-the-badge&logo=telegram)](https://t.me/march7_ai_bot)
+
+## 🇺🇸 English Version
+---
+# 📷 March 7th Telegram Bot (三月七助手)
+
+> "Every day should leave a new memory! Hehe, Pioneer, come take a picture with me~"
+
+This is a Telegram bot developed using Python and integrated with the **Groq API** (Llama-3.3/Mixtral). She's not just an AI, but also the lively, energetic, and photo-loving **March 7th**!
+
+---
+
+## ✨ Core Features
+
+- **Energetic Conversation**: Deeply recreates March 7th's personality, with built-in descriptions of her thoughts and actions.
+
+- **Dynamic Memory**: She can remember a few of your most recent conversations, eliminating "gap" in your chats.
+
+- **Affection System**: Your words affect her mood and affection level; higher affection levels bring surprises!
+
+- **BYOK Mode**: Supports "self-powered" operation. You can enter your own Groq Token to run it without consuming public quota.
+
+- **Dual-Mode Switching**: Supports free switching between Llama and Mixtral modes.
+
+---
+
+## 🛠️ Command Manual (Click the command to trigger directly)
+
+In the bot's chat box, you can use the following "Pioneer Exclusive" commands:
+
+| Command | Function Description |
+
+| :--- | :--- |
+
+| `/start` | Awaken March 7th and begin your adventure! |
+
+| `/help` | Summon the detailed graphical menu. |
+
+| `/setkey` | **[Important]** Bind your own Groq Token (recommended to send via private message). |
+
+| `/aris` | Enable long conversation mode; this girl will chat with you indefinitely. |
+
+| `/model` | Switch brain model (`fast` Llama / `smart`). | | `/reset` | Format memory. If I break down, use this to fix it! |
+
+| `/ask` | Ask a quick question. In this mode, I won't occupy my brain's memory. |
+
+---
+
+## 🚀 Quick Start Guide
+
+If this is your first time using it, please follow these steps:
+
+1. **Find the bot:** Pioneer, you can use the link at the bottom, scan the QR code, or search for `@march7_ai_bot` on Telegram and click `Start`.
+
+2. **Configure power (optional):** To keep me energized, we recommend applying for a free API Key at [Groq Cloud](https://console.groq.com/keys).
+
+3. **Bind Key (optional):** Send `/setkey gsk_yourKey` to the bot in a private message.
+
+4. **Start chatting:** Send a message directly, or tease her with `/aris`!
+
+<img width="579" height="760" alt="Screenshot 2026-04-05 170816" src="https://github.com/user-attachments/assets/240c01b0-cd30-48db-b298-597761b25392" />
+
+---
+
+## 📝 Developer Notes (How to Deploy Yourself)
+
+If you want to set up your own March 7th Bot, please refer to the following steps:
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/aruxmmm/march7-telegram-bot.git
+
+cd march7-telegram-bot
+
+```
+
+### 2. Install Dependencies
+
+Ensure your computer has Python 3.10+ installed, then run the following in the terminal:
+
+```bash
+pip install -r requirements.txt
+
+```
+
+### 3. Configure Environment Variables
+
+Create a new `.env` file locally, or add the following variables in the settings page of a cloud platform (such as Railway/HuggingFace):
+
+| Variable Name | Acquisition Channel | Description |
+
+| :--- | :--- | :--- |
+
+| `TELEGRAM_TOKEN` | [@BotFather](https://t.me/Botfather) | Bot's Identity Token |
+
+| `GROQ_API_KEY` | [Groq Console](https://console.groq.com/keys) | AI Brain's Energy Key |
+
+### 4. Run the Program
+
+```bash
+python main.py
+
+```
+
+---
+
+## 📅 Update Log
+
+- **V0.1**: Basic dialogue logic, affinity system, and context memory function are now online.
+
+- *More features (such as sending emojis, triggering storylines based on affinity) are under development...* 📷
+
+---
+
+## 📸 Scan the code to start your adventure
+
+<img width="300" alt="march7_ai_bot_qrcode" src="https://github.com/user-attachments/assets/265ae68e-d3bc-4833-8556-746ffc6aac6d" />
+
+> **March 7th's Ramblings**:
+
+> "Hey, that place called GitHub, remember to give me a **Star**! Otherwise, I'll blur you in the next photo!" 📸
 
 [![Telegram Bot](https://img.shields.io/badge/Telegram-Bot-blue?style=for-the-badge&logo=telegram)](https://t.me/march7_ai_bot)
 
