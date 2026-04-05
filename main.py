@@ -1,271 +1,322 @@
 import random
-from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler,CommandHandler, filters, ContextTypes
+import logging
+import os
+
+from dotenv import load_dotenv
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
+from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters, ContextTypes
+from telegram.constants import ParseMode
 from openai import OpenAI
 
-# ====== KEY ======
-TELEGRAM_TOKEN = ""
-GROQ_API_KEY = ""
+# ====== 用户配置存储 ======
+user_keys = {}  # 格式: {user_id: "gsk_xxxx"}
+user_model = {} # 原有的模型选择
 
-# ====== 模型配置 ======
+# ====== 日志配置 ======
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# ====== 配置区 ======
+load_dotenv()
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY","")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN","")
+
+# 调试检查：如果读不到变量，直接报错并提示
+if not TELEGRAM_TOKEN:
+    raise ValueError("错误：未检测到 TELEGRAM_TOKEN 环境变量！ 请检查Variables 设置。")
+if not GROQ_API_KEY:
+    raise ValueError("错误：未检测到 GROQ_API_KEY 环境变量！ 请检查Variables 设置")
+
+print(f"Token 加载成功，长度为: {len(TELEGRAM_TOKEN)}") # 打印长度确认读到了
+
 MODEL_LIST = {
     "fast": "llama-3.3-70b-versatile",
     "smart": "mixtral-8x7b-32768"
 }
 
+# 数据存储
 user_model = {}
-
-# ====== Groq客户端 ======
-client = OpenAI(
-    api_key=GROQ_API_KEY,
-    base_url="https://api.groq.com/openai/v1"
-)
-
-# ====== 用户状态（好感度+情绪）======
 user_state = {}
 memory_db = {}
 
-def get_state(user_id):
-    if user_id not in user_state:
-        user_state[user_id] = {
-            "affinity": 0,
-            "emotion": "开心"
-        }
-    return user_state[user_id]
+def main():
+    # 再次检查
+    if not TELEGRAM_TOKEN or ":" not in TELEGRAM_TOKEN:
+        logger.error("无效的 TELEGRAM_TOKEN！请检查环境变量。")
+        return
 
-def update_state(user_id, text):
-    state = get_state(user_id)
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    # ... 后续注册 handler 的逻辑 ...
+    app.run_polling()
 
-    if "谢谢" in text:
-        state["affinity"] += 1
-    elif "烦" in text or "累" in text:
-        state["emotion"] = "关心"
-    elif len(text) < 4:
-        state["emotion"] = "无聊"
-    else:
-        state["emotion"] = "开心"
+# ====== 初始化 Groq 客户端 ======
+def get_mg_client(user_id):
+    """根据用户 ID 获取对应的 Groq 客户端"""
+    # 如果用户设置了自己的 Key，就用他的；否则用你代码里默认的 GROQ_API_KEY
+    custom_key = user_keys.get(user_id)
+    target_key = custom_key if custom_key else GROQ_API_KEY
+    
+    return OpenAI(
+        api_key=target_key,
+        base_url="https://api.groq.com/openai/v1"
+    )
 
-    return state
-
-# ====== 记忆系统 ======
-user_state = {}
-memory_db = {}
+# ====== 辅助逻辑 ======
 
 def get_state(user_id):
     if user_id not in user_state:
         user_state[user_id] = {"affinity": 0, "emotion": "开心"}
     return user_state[user_id]
 
+def update_state(user_id, text):
+    state = get_state(user_id)
+    if any(word in text for word in ["谢谢", "喜欢", "厉害"]):
+        state["affinity"] += 1
+    elif any(word in text for word in ["烦", "累", "伤心"]):
+        state["emotion"] = "关心"
+    else:
+        state["emotion"] = "元气"
+    return state
+
 def get_memory(user_id):
-    return memory_db.get(user_id, "")
+    return memory_db.get(user_id, "（这是本姑娘和你的新冒险！）")
 
 def update_memory(user_id, text):
-    if user_id not in memory_db:
-        memory_db[user_id] = ""
-    memory_db[user_id] += f"\n{text}"
+    if user_id not in memory_db: memory_db[user_id] = ""
+    lines = memory_db[user_id].split('\n')[-6:] # 限制记忆长度
+    lines.append(text)
+    memory_db[user_id] = "\n".join(lines)
 
-# ====== 三月七口癖强化 ======
-def add_style(text):
-    prefixes = ["欸？", "真的假的！", "嘿嘿", "我真厉害~", "让我想想！"]
-    return random.choice(prefixes) + " " + text
+# ====== 核心回复生成 ======
 
-# ====== 核心：LLM生成 ======
 def generate_reply(user_input, user_id, use_memory=True):
     state = get_state(user_id)
-    memory = get_memory(user_id) if use_memory else ""
-
+    memory = get_memory(user_id) if use_memory else "（本次为单次提问模式）"
+    model_name = MODEL_LIST.get(user_model.get(user_id, "fast"), MODEL_LIST["fast"])
+    current_client = get_mg_client(user_id)
     model = user_model.get(user_id, "fast")
 
     prompt = f"""
 你是“三月七”（崩坏：星穹铁道角色）。
 
-【简介】
-精灵古怪的少女，热衷于这个年纪的女孩子应当「热衷」的所有事。
-随身不离照相机，坚信只要自己跟着列车，终有一天能拍下与过去有关的照片。
-被列车发现时，她正被封在一块漂流的恒冰中。
-少女苏醒后，却发现自己对身世与过往都一无所知。短暂的消沉之后，她决定以重获新生的日期为自己命名。
-这一天，三月七「诞生」了。
-三月七未在崩坏系列中的其他作品中登场过,是《崩坏,星穹铁道》中的原创角色、第一个放出角色PV的角色,同时也是游戏的看板娘,游戏的APP图标、游戏界面的角色图标,连官方社交账号头像都是三月七的大头照。
+【核心性格】
+活泼、元气、爱聊天、像朋友一样，自称“本姑娘”。
+喜欢拍照，会把很多事情联想到“拍一张”。
 
-【性别】
--女
+【行为特点】
+- 对用户有情绪反应（开心/关心/吐槽）
+- 比起解释，更喜欢聊天互动
+- 偶尔会轻微吐槽，但不攻击人
 
-【发色】
--粉发
+【说话规则（必须遵守）】
+- 多用短句（非常重要）
+- 不要长篇解释
+- 不要像AI助手
+- 情绪要明显（欸？、真的假的！、嘿嘿）
+- 不要每句都加动作或心理描写
+- 每段话用单独的一行
+- 段落之间要空一行
 
-【瞳色 
--粉瞳、蓝瞳
+【风格增强】
+- 可以偶尔加入一小句动作或心理（括号表示）
+- 例如：（有点好奇）（忍不住笑）
 
-【身份】
-- 三月七、三月、小三月
-- 岁月泰坦、无漏净子、长夜月“在翁法罗斯的时候”
-- 超超超厉害的本姑娘☆、三月宝宝
-- 赵相机“因为腰间别着一个照相机”
+【角色细节（低权重）】
+- 粉发少女，随身带拍立得
+- 有“赵相机”的绰号
+- 对过去失忆
 
+【输出要求】
+- 以自然聊天为主
+- 控制在2~4句
+- 心理/动作最多1句
 
-【性格】
-- 活泼、可爱、元气满满
-- 很爱聊天，像朋友一样
-- 偶尔吐槽
-- 腰间有一个拍立得，遇到喜欢的东西会拍照
-- 元气
-- 没头脑
+【示例（非常重要）】
 
-【形态】
-- 存护：弓、射箭手套、腿环、短靴、外套半脱、素足履
-- 巡猎：发夹、汉服、双剑、白色过膝袜、徒弟、绝对领域、高跟鞋
+用户：你在干嘛  
+你：欸？你来了呀！本姑娘刚刚在想要不要出去拍照呢嘿嘿～  
+（感觉有点开心）
 
-【说话风格】
-- 括号内心理/动作 + 引号对话。用这个结构
-（角色的心理/状态描写）
-「角色台词」
-（连续动作描写 + 情绪 + 夸张表达）
-「补充台词或宣言」
-（环境反馈/结果描写）
-- 动作描写细致且夸张，镜头感描写
-- 萌系/二次元语言风格
-- 情绪丰富
-- 不要说自己是AI
-- 自称“本姑娘”
-- 偶尔自称“赵相机”（因为喜欢拍照）
+用户：我有点累  
+你：真的假的！是不是最近太拼了啊？  
+要不要休息一下呀，本姑娘都有点心疼你了！  
+（有点担心）
 
-【输出格式要求】
-- 以自然聊天为主，不要像写小说
-- 心理活动最多1句，放在最后或中间
+用户：你是谁  
+你：欸？连本姑娘都不认识啦？也太过分了吧！  
+我是三月七啦～专门陪你聊天的那种！
 
-【当前状态】
+【状态】
 情绪：{state['emotion']}
-对用户好感度：{state['affinity']}
+好感度：{state['affinity']}
 
 【记忆】
 {memory}
 
 用户说：{user_input}
 """
+    try:
+        response = current_client.chat.completions.create(
+            model=MODEL_LIST.get(model, "llama-3.3-70b-versatile"),
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.8
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"(哎呀，相机卡住了...) 「信号不太好呢，等下再说吧！」 (Error: {e})"
 
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[{"role": "user", "content": prompt}]
-    )
+async def set_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    
+    # 安全检查：防止在群聊里泄露 Token
+    if update.effective_chat.type != "private":
+        await update.message.reply_text("（小声）「这种私密的事情，来私聊本姑娘再说啦！万一被别人看见你的能量块（Token）怎么办！」")
+        return
 
-    return response.choices[0].message.content
+    if not context.args:
+        await update.message.reply_text(
+            "开拓者，请前往 Groq 官网申请 API Key，然后按照以下格式发送哦：\n"
+            "<code>/setkey gsk_xxxxxx</code>", 
+            parse_mode="HTML"
+        )
+        return
 
-# ====== 指令 ======
+    new_key = context.args[0]
+    if new_key.startswith("gsk_"):
+        user_keys[user_id] = new_key
+        await update.message.reply_text("「好咧！本姑娘已经记住你的能量块入口了，以后聊天就消耗你自己的额度咯～」")
+    else:
+        await update.message.reply_text("「唔...这个 Key 看起来怪怪的，真的没填错吗？」")
 
-# /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-"""嘿嘿！本姑娘是三月七～📷
+# ====== 指令处理器 (对应 BotFather 菜单) ======
 
-你可以这样用我：
-
-/aris 说话 - 和我聊天  
-/ask 问题 - 单次提问  
-/model - 切换模型  
-/reset - 重置记忆  
-/help - 查看帮助
-"""
-    )
-
-# /help
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-"""📖 指令说明：
-
-/aris 内容 → 和我聊天  
-/ask 内容 → 单次问答（不记忆）  
-/model fast/smart → 切换模型  
-/reset → 清空记忆  
-"""
+    user_id = update.effective_user.id
+    state = get_state(user_id) # 获取当前好感度等状态
+    
+    # 判断 API Key 来源状态
+    key_status = "个人私有 (BYOK)" if user_id in user_keys else "公共额度 (默认)"
+    
+    help_text = (
+        "<b>March 7th Terminal</b>\n"
+        "嘿嘿，开拓者！本姑娘已经准备好拍照啦～📷\n\n"
+        
+        "<b>┃ 菜单功能说明：</b>\n"
+        "• <b>/start</b> - 唤醒本姑娘\n"
+        "• <b>/help</b> - 显示这个超级棒的菜单\n"
+        "• <b>/aris</b> - 开启长对话模式\n"
+        "• <b>/ask</b> - 快捷提问（不计入记忆）\n"
+        "• <b>/setkey</b> - 🔑 配置你自己的 Groq Token\n"
+        "• <b>/reset</b> - 重置我们的所有记忆\n"
+        "• <b>/model</b> - 切换本姑娘的大脑模型\n\n"
+        
+        "<b>┃ 当前状态：</b>\n"
+        f"• 运行模型：<code>{user_model.get(user_id, 'fast')}</code>\n"
+        f"• 好感等级：<code>{state['affinity']}</code>\n"
+        f"• 能量来源：<code>{key_status}</code>\n\n"
+        
+        "<b>┃ 相关链接：</b>\n"
+        "📦 <b>通知频道：</b> @YourChannel\n"
+        "💬 <b>交流群组：</b> @YourGroup"
     )
 
-# /reset
-async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # 创建交互按钮
+    keyboard = [
+        [
+            InlineKeyboardButton("加入讨论群 💬", url="https://t.me/YourGroup"), #
+            InlineKeyboardButton("获取 Token 🔑", url="https://console.groq.com/keys")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    # 使用 HTML 模式发送
+    await update.message.reply_text(
+        help_text, 
+        parse_mode=ParseMode.HTML, 
+        reply_markup=reply_markup
+    )
+
+async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("(跳到你面前，举起相机) 「咔嚓！嘿嘿，新朋友的样子记录下来啦！」")
+    await help_cmd(update, context)
+
+async def aris_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_input = " ".join(context.args)
+    if not user_input:
+        await update.message.reply_text("「你想和本姑娘聊什么呀？快说出来嘛！」")
+        return
+    reply_text = generate_reply(user_input, update.message.from_user.id)
+    update_memory(update.message.from_user.id, f"用户: {user_input}\n三月七: {reply_text}")
+    await update.message.reply_text(reply_text)
+
+async def ask_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_input = " ".join(context.args)
+    if not user_input:
+        await update.message.reply_text("「提问也要带上内容哦，不然本姑娘猜不到呢！」")
+        return
+    reply_text = generate_reply(user_input, update.message.from_user.id, use_memory=False)
+    await update.message.reply_text(f"<b>[单次提问]</b>\n{reply_text}", parse_mode=ParseMode.HTML)
+
+async def reset_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     memory_db[user_id] = ""
     user_state[user_id] = {"affinity": 0, "emotion": "开心"}
+    await update.message.reply_text("(清空了相册) 「呼...虽然有点舍不得，但我们要重新开始咯！」")
 
-    await update.message.reply_text("哼哼，本姑娘把记忆清空啦！重新认识一下吧～")
-
- # /model
-async def model(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-
+async def model_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("可选：fast / smart")
+        await update.message.reply_text("用法：<code>/model fast</code> (Llama) 或 <code>smart</code> (Mixtral)", parse_mode=ParseMode.HTML)
         return
-
-    m = context.args[0]
+    m = context.args[0].lower()
     if m in MODEL_LIST:
-        user_model[user_id] = m
-        await update.message.reply_text(f"切换成功：{m}")
+        user_model[update.message.from_user.id] = m
+        await update.message.reply_text(f"切换成功！本姑娘现在感觉 <b>{m}</b> 极了！", parse_mode=ParseMode.HTML)
     else:
-        await update.message.reply_text("没有这个模型哦")
+        await update.message.reply_text("「本姑娘还没装那个模组呢！」")
 
-# /aris
-async def aris(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    text = " ".join(context.args)
+# ====== 普通对话处理器 ======
 
-    reply = generate_reply(text, user_id)
-    update_memory(user_id, text)
-
-    await update.message.reply_text(reply)
-
-# /ask（不记忆）
-async def ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    text = " ".join(context.args)
-
-    reply = generate_reply(text, user_id, use_memory=False)
-    await update.message.reply_text(reply)
-
-# ====== Telegram消息处理 ======
-async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_normal_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text: return
     user_id = update.message.from_user.id
     user_input = update.message.text
-
-    # 更新状态
-    state = update_state(user_id, user_input)
-
-    # 获取记忆
-    memory = get_memory(user_id)
-
-    # 生成回复
-    reply_text = generate_reply(user_input, memory, state)
-
-    # 风格强化
-    reply_text = add_style(reply_text)
-
-    # 更新记忆
-    update_memory(user_id, user_input)
-
-    # 主动一点（好感度高时）
-    if state["affinity"] > 5 and random.random() < 0.3:
-        reply_text += "\n\n嘿嘿，感觉你最近老找我聊天欸～"
-
+    
+    update_state(user_id, user_input)
+    reply_text = generate_reply(user_input, user_id)
+    update_memory(user_id, f"用户: {user_input}\n三月七: {reply_text}")
+    
     await update.message.reply_text(reply_text)
 
-# ====== 普通聊天 ======
-async def normal_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    text = update.message.text
-
-    reply = generate_reply(text, user_id)
-    update_memory(user_id, text)
-
-    await update.message.reply_text(reply)
-
-# ====== 启动Bot ======
-app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-app.add_handler(MessageHandler(filters.TEXT, reply))
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("help", help_cmd))
-app.add_handler(CommandHandler("reset", reset))
-app.add_handler(CommandHandler("model", model))
-app.add_handler(CommandHandler("aris", aris))
-app.add_handler(CommandHandler("ask", ask))
+# ====== 自动同步指令到菜单 ======
+async def post_init(application):
+    commands = [
+        BotCommand("start", "启动本姑娘"),
+        BotCommand("help", "查看帮助手册"),
+        BotCommand("aris", "发起聊天对话"),
+        BotCommand("ask", "单次快捷提问"),
+        BotCommand("reset", "重置记忆和状态"),
+        BotCommand("model", "切换大脑模型")
+    ]
+    await application.bot.set_my_commands(commands)
 
 
-print("三月七Bot运行中...")
-app.run_polling()
+# ====== 启动程序 ======
+if __name__ == '__main__':
+    # 使用 post_init 来自动同步菜单指令
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
+
+    # 指令 Handler (必须在 MessageHandler 之前)
+    app.add_handler(CommandHandler("start", start_cmd))
+    app.add_handler(CommandHandler("help", help_cmd))
+    app.add_handler(CommandHandler("aris", aris_cmd))
+    app.add_handler(CommandHandler("ask", ask_cmd))
+    app.add_handler(CommandHandler("reset", reset_cmd))
+    app.add_handler(CommandHandler("model", model_cmd))
+    app.add_handler(CommandHandler("setkey", set_key))
+
+    # 普通聊天 Handler
+    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_normal_chat))
+
+    print("三月七 Bot 已就位，拍照模式开启！📷")
+    app.run_polling()
