@@ -90,9 +90,3 @@ python main.py
 
 [![Telegram Bot](https://img.shields.io/badge/Telegram-Bot-blue?style=for-the-badge&logo=telegram)](https://t.me/march7_ai_bot)
 
-
-
-> "Hey, that place called GitHub, remember to give me a **Star**! Otherwise, I'll blur you in the next photo!" 📸
-
-[![Telegram Bot](https://img.shields.io/badge/Telegram-Bot-blue?style=for-the-badge&logo=telegram)](https://t.me/march7_ai_bot)
-
