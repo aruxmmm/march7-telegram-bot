@@ -7,16 +7,5 @@
 - 人格对话（三月七风格）
 - 情绪与好感度系统
 - 简单记忆系统
-- 指令系统（/start /help /reset /model /ask）
 
-## 技术
-
-- Python
-- Telegram Bot API
-- Groq LLM API
-
-## 使用方法
-
-1. 创建 Telegram Bot
-2. 填入 API Key
-3. 运行 main.py
+<img width="1422" height="1645" alt="image" src="https://github.com/user-attachments/assets/265ae68e-d3bc-4833-8556-746ffc6aac6d" />
