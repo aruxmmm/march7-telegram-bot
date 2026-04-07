@@ -184,7 +184,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton("Gemini Key 🔑", url="https://makersuite.google.com/app/apikey")
         ],
         [
-            InlineKeyboardButton("加入讨论群 💬", url="https://t.me/YourGroup")
+            InlineKeyboardButton("加入讨论群 💬", url="https://t.me/+GMfVNKY3vuNjOTA9")
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
