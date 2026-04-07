@@ -173,8 +173,8 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• 能量来源：<code>{key_status}</code>\n\n"
 
         "<b>┃ 相关链接：</b>\n"
-        "📦 <b>通知频道：</b> @YourChannel\n"
-        "💬 <b>交流群组：</b> @YourGroup"
+        "📦 <b>通知频道：</b> https://t.me/+f4F_N8BSzFJhZDll\n"
+        "💬 <b>交流群组：</b> https://t.me/+GMfVNKY3vuNjOTA9"
     )
 
     # 创建交互按钮
