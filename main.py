@@ -31,7 +31,7 @@ async def post_init(application):
         BotCommand("reset", "重置记忆和状态"),
         BotCommand("model", "切换大脑模型"),
         BotCommand("setkey", "配置 API Token"),
-        BotCommand("setapi", "切换 API 提供商")
+        BotCommand("setapi", "切换 API 提供商"),
         BotCommand("stats", "查看统计数据")
         
     ]
