@@ -3,8 +3,10 @@ from telegram.ext import ContextTypes
 from core.state import update_state
 from core.llm import generate_reply
 from core.memory import update_memory
+from core.database import track_user_interaction
 
 async def handle_normal_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    track_user_interaction(update)
     if not update.message or not update.message.text:
         return
     user_id = update.message.from_user.id

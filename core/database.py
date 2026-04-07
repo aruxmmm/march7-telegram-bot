@@ -21,7 +21,19 @@ def init_db():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
+
+        # 用户使用记录表（用于统计总使用人数）
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY,
+            username TEXT,
+            first_name TEXT,
+            last_interaction TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            total_interactions INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     # 用户 API 提供商选择表
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_api_provider (
@@ -301,6 +313,67 @@ def delete_user_data(user_id):
     
     conn.commit()
     conn.close()
+
+# ==================== 用户使用统计 ====================
+
+def track_user_interaction(update):
+    """记录或更新用户互动（每次发消息/用命令时调用）"""
+    if not update or not update.effective_user:
+        return
+    
+    user = update.effective_user
+    user_id = user.id
+    username = user.username
+    first_name = user.first_name or ""
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        INSERT INTO users (user_id, username, first_name, last_interaction, total_interactions)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP, 1)
+        ON CONFLICT(user_id) DO UPDATE SET 
+            username = excluded.username,
+            first_name = excluded.first_name,
+            last_interaction = CURRENT_TIMESTAMP,
+            total_interactions = total_interactions + 1
+    """, (user_id, username, first_name))
+    
+    conn.commit()
+    conn.close()
+
+def get_total_users() -> int:
+    """获取总使用人数（唯一用户数）"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM users")
+    count = cursor.fetchone()[0]
+    conn.close()
+    return count
+
+def get_active_users(days: int = 30) -> int:
+    """获取最近 N 天活跃用户数"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT COUNT(*) FROM users 
+        WHERE last_interaction >= datetime('now', ?)
+    """, (f'-{days} days',))
+    count = cursor.fetchone()[0]
+    conn.close()
+    return count
+
+def get_user_interaction_stats(user_id: int):
+    """获取单个用户的互动统计（可选）"""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT total_interactions, last_interaction FROM users WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return dict(row)
+    return {"total_interactions": 0, "last_interaction": None}
 
 # 启动时自动初始化数据库
 if not DB_PATH.exists():

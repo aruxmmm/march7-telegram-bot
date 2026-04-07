@@ -34,7 +34,7 @@ MODEL_LIST = {
     "groq_fast": {"api": "groq", "model": "llama-3.3-70b-versatile"},
     "groq_smart": {"api": "groq", "model": "mixtral-8x7b-32768"},
     # Gemini 模型
-    "gemini_fast": {"api": "gemini", "model": "gemini-1.5-flash"},
+    "gemini_fast": {"api": "gemini", "model": "gemini-2.5-flash"},
     "gemini_smart": {"api": "gemini", "model": "gemini-1.5-pro"},
 }
 
@@ -54,3 +54,6 @@ try:
     init_db()
 except ImportError:
     print("警告：数据库模块加载失败，将使用内存存储（关机会丢失数据）")
+
+# 数据库配置
+DB_PATH = os.getenv("DB_PATH", "march7_bot.db")   # 默认存到项目根目录
