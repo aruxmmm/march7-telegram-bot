@@ -175,7 +175,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         "<b>┃ 相关链接：</b>\n"
         "📦 <b>通知频道：</b> https://t.me/+f4F_N8BSzFJhZDll\n"
-        "💬 <b>交流群组：</b> https://t.me/+GMfVNKY3vuNjOTA9"
+        
     )
 
     # 创建交互按钮
@@ -185,7 +185,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton("Gemini Key 🔑", url="https://makersuite.google.com/app/apikey")
         ],
         [
-            InlineKeyboardButton("加入讨论群 💬", url="https://t.me/+GMfVNKY3vuNjOTA9")
+            InlineKeyboardButton("加入通知频道 💬", url="https://t.me/+f4F_N8BSzFJhZDll")
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
