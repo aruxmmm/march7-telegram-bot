@@ -4,6 +4,7 @@ from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, fil
 from config import TELEGRAM_TOKEN, QQ_BOT_ENABLED
 from handlers.commands import start_cmd, help_cmd, aris_cmd, ask_cmd, reset_cmd, model_cmd, set_key, set_api
 from handlers.chat import handle_normal_chat
+from handlers.stats import stats_cmd
 
 if QQ_BOT_ENABLED:
     from qq_main import start_qq_bot
@@ -31,6 +32,8 @@ async def post_init(application):
         BotCommand("model", "切换大脑模型"),
         BotCommand("setkey", "配置 API Token"),
         BotCommand("setapi", "切换 API 提供商")
+        BotCommand("stats", "查看统计数据")
+        
     ]
     await application.bot.set_my_commands(commands)
 
@@ -49,6 +52,7 @@ def main():
         app.add_handler(CommandHandler("model", model_cmd))
         app.add_handler(CommandHandler("setkey", set_key))
         app.add_handler(CommandHandler("setapi", set_api))
+        app.add_handler(CommandHandler("stats", stats_cmd))
 
         # 普通聊天 Handler
         app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_normal_chat))

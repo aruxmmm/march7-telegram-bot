@@ -157,14 +157,15 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "嘿嘿，开拓者！本姑娘已经准备好拍照啦～📷\n\n"
 
         "<b>┃ 菜单功能说明：</b>\n"
-        "• <b>/start</b> - 唤醒本姑娘\n"
-        "• <b>/help</b> - 显示这个超级棒的菜单\n"
-        "• <b>/aris</b> - 开启长对话模式\n"
-        "• <b>/ask</b> - 快捷提问（不计入记忆）\n"
+        "• <b>/start</b> - 📸 唤醒本姑娘\n"
+        "• <b>/help</b> - 😘 显示这个超级棒的菜单\n"
+        "• <b>/aris</b> - 😽 开启长对话模式\n"
+        "• <b>/ask</b> - 🤸 快捷提问（不计入记忆）\n"
         "• <b>/setkey</b> - 🔑 配置你自己的 API Token\n"
-        "• <b>/setapi</b> - 🔌 切换 API 提供商 (Groq/Gemini)\n"
-        "• <b>/reset</b> - 重置我们的所有记忆\n"
-        "• <b>/model</b> - 切换本姑娘的大脑模型\n\n"
+        "• <b>/setapi</b> - 🔌 切换 API 提供商 (Groq更快/Gemini更聪明)\n"
+        "• <b>/reset</b> - 🧩 重置我们的所有记忆\n"
+        "• <b>/model</b> - 💎 切换本姑娘的大脑模型\n\n"
+        "• <b>/stats</b> - 💾 查看本姑娘的统计数据\n\n"
 
         "<b>┃ 当前状态：</b>\n"
         f"• 运行模型：<code>{user_model.get(user_id, 'fast')}</code>\n"
@@ -173,8 +174,8 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• 能量来源：<code>{key_status}</code>\n\n"
 
         "<b>┃ 相关链接：</b>\n"
-        "📦 <b>通知频道：</b> @YourChannel\n"
-        "💬 <b>交流群组：</b> @YourGroup"
+        "📦 <b>通知频道：</b> https://t.me/+f4F_N8BSzFJhZDll\n"
+        "💬 <b>交流群组：</b> https://t.me/+GMfVNKY3vuNjOTA9"
     )
 
     # 创建交互按钮
@@ -184,7 +185,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton("Gemini Key 🔑", url="https://makersuite.google.com/app/apikey")
         ],
         [
-            InlineKeyboardButton("加入讨论群 💬", url="https://t.me/YourGroup")
+            InlineKeyboardButton("加入讨论群 💬", url="https://t.me/+GMfVNKY3vuNjOTA9")
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
