@@ -2,117 +2,179 @@ from openai import OpenAI
 from google import genai
 from core.state import user_model, get_state
 from core.memory import get_memory
-from config import GROQ_API_KEY, GEMINI_API_KEY, MODEL_LIST, DEFAULT_MODELS, user_keys, user_api_provider
+from config import (
+    GROQ_API_KEY,
+    GEMINI_API_KEY,
+    GROK_API_KEY,
+    MODEL_LIST,
+    DEFAULT_MODELS,
+    user_keys
+)
 from prompt.march7 import get_prompt
 
-# 导入数据库函数
+# 数据库支持（可选）
 try:
-    from core.database import get_user_api_keys, get_user_api_provider
+    from core.database import get_user_api_keys
     DB_AVAILABLE = True
 except ImportError:
     DB_AVAILABLE = False
 
 
-def get_client(user_id, api_provider=None):
-    """
-    获取对应的 API 客户端实例
-    """
-    # 1. 确定 Provider 逻辑保持不变...
-    if api_provider is None:
-        if DB_AVAILABLE:
-            api_provider = get_user_api_provider(user_id)
-        else:
-            api_provider = user_api_provider.get(user_id, "groq")
-    
-    # 2. 获取对应的 API Key
+# =========================
+# 🔑 获取用户 API Key
+# =========================
+def get_api_key(user_id, provider):
     if DB_AVAILABLE:
-        user_keys_dict = get_user_api_keys(user_id)
+        keys = get_user_api_keys(user_id) or {}
     else:
-        user_keys_dict = user_keys.get(user_id) if isinstance(user_keys.get(user_id), dict) else {}
+        keys = user_keys.get(user_id, {}) if isinstance(user_keys.get(user_id), dict) else {}
 
-    if api_provider == "gemini":
-        # 获取 Gemini Key
-        custom_key = user_keys_dict.get("gemini") if user_keys_dict else None
-        target_key = custom_key if custom_key else GEMINI_API_KEY
-        if not target_key:
-            raise ValueError("Gemini API Key 未配置")
-        
-        # --- 关键修改点：不再 return "gemini"，而是返回 Client 实例 ---
-        return genai.Client(api_key=target_key)
-        
-    else:
-        # 获取 Groq Key
-        custom_key = user_keys_dict.get("groq") if user_keys_dict else None
-        # 兼容性处理：如果 user_keys[user_id] 直接就是字符串（旧格式）
-        if not custom_key and isinstance(user_keys.get(user_id), str):
-            custom_key = user_keys.get(user_id)
-            
-        target_key = custom_key if custom_key else GROQ_API_KEY
-        if not target_key:
-            raise ValueError("Groq API Key 未配置")
-            
+    # 优先用户 key
+    if provider in keys:
+        return keys[provider]
+
+    # fallback 公共 key
+    if provider == "groq":
+        return GROQ_API_KEY
+    elif provider == "grok":
+        return GROK_API_KEY
+    elif provider == "gemini":
+        return GEMINI_API_KEY
+
+    return None
+
+
+# =========================
+# 🧠 获取客户端
+# =========================
+def get_client(provider, api_key):
+    if not api_key:
+        raise ValueError(f"{provider} API Key 未配置")
+
+    if provider == "gemini":
+        return genai.Client(api_key=api_key)
+
+    elif provider == "grok":
         return OpenAI(
-            api_key=target_key,
+            api_key=api_key,
+            base_url="https://api.x.ai/v1"
+        )
+
+    elif provider == "groq":
+        return OpenAI(
+            api_key=api_key,
             base_url="https://api.groq.com/openai/v1"
         )
-    
-def generate_reply(user_input, user_id, use_memory=True):
-    # 1. 获取基本状态和模型配置
-    state = get_state(user_id)
-    memory = get_memory(user_id) if use_memory else "（本次为单次提问模式）"
-    
-    # 2. 确定用户要用哪个模型
-    user_model_key = user_model.get(user_id, "fast")
-    if user_model_key in DEFAULT_MODELS:
-        user_model_key = DEFAULT_MODELS[user_model_key]
-    
-    # 3. 【关键步】先拿到 api_provider 和 model_name
-    model_config = MODEL_LIST.get(user_model_key, MODEL_LIST["groq_fast"])
-    api_provider = model_config["api"]    # 这里赋值了！
-    model_name = model_config["model"]    # 确保这里是 gemini-2.5-flash
-    
-    # 4. 现在再传给 get_client 就不报错了
-    client = get_client(user_id, api_provider)
-    
-    prompt = get_prompt(state, memory, user_input)
 
+    else:
+        raise ValueError(f"未知 provider: {provider}")
+
+
+# =========================
+# ✨ 主函数
+# =========================
+def generate_reply(user_input, user_id, use_memory=True):
+    # ===== 1. 状态 & 记忆 =====
+    state = get_state(user_id)
+    memory = get_memory(user_id) if use_memory else "（单次提问模式）"
+
+    # 限制 memory 长度（防炸）
+    if len(memory) > 2000:
+        memory = memory[-2000:]
+
+    # ===== 2. 模型配置 =====
+    model_key = user_model.get(user_id, "fast")
+
+    if model_key in DEFAULT_MODELS:
+        model_key = DEFAULT_MODELS[model_key]
+
+    config = MODEL_LIST.get(model_key, MODEL_LIST["groq_fast"])
+
+    provider = config["api"]
+    model_name = config["model"]
+
+    # ===== 3. prompt 拆分 =====
+    system_prompt = get_prompt(state, memory, "")
+    user_prompt = user_input
+
+    # ===== 4. 调用 =====
     try:
-        if api_provider == "gemini":
-            # 新版 SDK 的写法
-            response = client.models.generate_content(
-                model=model_name,
-                contents=prompt
-            )
-            return response.text
-        else:
-            # Groq/OpenAI 写法
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.8
-            )
-            return response.choices[0].message.content
+        return call_model(
+            provider,
+            model_name,
+            user_id,
+            system_prompt,
+            user_prompt
+        )
+
     except Exception as e:
-        # 你的错误处理逻辑...
-      error_str = str(e).lower()
-      full_error = str(e)[:300]  # 保留更多错误信息用于调试
-    
-      if "403" in error_str or "forbidden" in error_str:
-        if "model" in error_str or "permission" in error_str:
-            msg = "「这个模型本姑娘暂时用不了呢... 试试换个模型？用 /model 看看」"
-        elif any(k in error_str for k in ["key", "auth", "authentication", "invalid"]):
-            msg = "「能量块（API Key）好像有问题～ 检查一下 /setkey 设置的对不对？或者试试切换回公共额度」"
-        elif "cloudflare" in error_str or "access denied" in error_str or "network" in error_str:
-            msg = "「信号被 Cloudflare 挡住了（403 Forbidden）... 可能是网络或服务器 IP 问题，换个网络/VPN 试试？」"
-        else:
-            msg = "「信号被挡住了（403 Forbidden）... 可能是权限或网络问题，等会儿再试试吧」"
-      elif "429" in error_str or "rate limit" in error_str:
-        msg = "「本姑娘今天被问太多次，脑子有点累了～ 等会儿再来找我玩吧！」"
-      elif "401" in error_str or "unauthorized" in error_str:
-        msg = "「能量块验证失败了呢... 请用 /setkey 重新告诉我正确的 Key」"
-      else:
-        msg = "（相机突然卡住了...）「呜，信号不太好呢~」"
-        # 返回给用户
-      return f"{msg}\n\n(调试信息: {full_error})"
-    
-    
+        # ===== fallback =====
+        if provider != "groq":
+            try:
+                return call_model(
+                    "groq",
+                    MODEL_LIST["groq_fast"]["model"],
+                    user_id,
+                    system_prompt,
+                    user_prompt
+                )
+            except:
+                pass
+
+        return handle_error(e)
+
+
+# =========================
+# 🤖 调用模型
+# =========================
+def call_model(provider, model_name, user_id, system_prompt, user_prompt):
+    api_key = get_api_key(user_id, provider)
+    client = get_client(provider, api_key)
+
+    # ===== Gemini =====
+    if provider == "gemini":
+        response = client.models.generate_content(
+            model=model_name,
+            contents=[{
+                "role": "user",
+                "parts": [system_prompt + "\n\n" + user_prompt]
+            }]
+        )
+        return response.text
+
+    # ===== OpenAI协议（Groq / Grok）=====
+    response = client.chat.completions.create(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        temperature=0.8
+    )
+
+    return response.choices[0].message.content
+
+
+# =========================
+# ❌ 错误处理
+# =========================
+def handle_error(e):
+    err = str(e).lower()
+    full = str(e)[:300]
+
+    if "401" in err or "unauthorized" in err:
+        msg = "「能量块验证失败了…检查一下 /setkey 吧！」"
+
+    elif "403" in err:
+        msg = "「这个模型本姑娘用不了呢…换一个试试？」"
+
+    elif "429" in err:
+        msg = "「问太多啦，本姑娘脑子有点累…等会儿再来！」"
+
+    elif "model" in err:
+        msg = "「这个模型好像不存在呢，用 /model 看看支持哪些吧！」"
+
+    else:
+        msg = "（相机卡住了…）「呜，信号不太好呢…」"
+
+    return f"{msg}\n\n(调试信息: {full})"

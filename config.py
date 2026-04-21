@@ -8,6 +8,7 @@ load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "")
+GROK_API_KEY = os.getenv("GROK_API_KEY")
 
 # QQ Bot 配置
 QQ_BOT_ENABLED = os.getenv("QQ_BOT_ENABLED", "").strip().lower() in ("1", "true", "yes", "on")
@@ -36,6 +37,9 @@ MODEL_LIST = {
     # Gemini 模型
     "gemini_fast": {"api": "gemini", "model": "gemini-2.5-flash"},
     "gemini_smart": {"api": "gemini", "model": "gemini-1.5-pro"},
+    # Grok 模型
+    "grok_fast":  {"api": "grok", "model": "grok-4-1-fast"},  
+    "grok_smart": {"api": "grok", "model": "grok-4.20"},        
 }
 
 # 默认模型列表映射（兼容旧格式）

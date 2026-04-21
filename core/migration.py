@@ -33,6 +33,8 @@ def migrate_data_to_db():
                     set_user_api_key(user_id, 'groq', keys['groq'])
                 if 'gemini' in keys:
                     set_user_api_key(user_id, 'gemini', keys['gemini'])
+                if 'grok' in keys:
+                    set_user_api_key(user_id, 'grok', keys['grok'])
             else:
                 # 旧格式：字符串形式的 Groq Key
                 set_user_api_key(user_id, 'groq', keys)

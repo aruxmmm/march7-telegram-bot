@@ -2,7 +2,8 @@ import logging
 from telegram import BotCommand
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, filters
 from config import TELEGRAM_TOKEN, QQ_BOT_ENABLED
-from handlers.commands import start_cmd, help_cmd, aris_cmd, ask_cmd, reset_cmd, model_cmd, set_key, set_api
+from handlers.commands import start_cmd, aris_cmd, ask_cmd, reset_cmd, resetquota_cmd, model_cmd, set_key, set_api
+from handlers.help import help_cmd
 from handlers.chat import handle_normal_chat
 from handlers.stats import stats_cmd
 
@@ -29,6 +30,7 @@ async def post_init(application):
         BotCommand("aris", "发起聊天对话"),
         BotCommand("ask", "单次快捷提问"),
         BotCommand("reset", "重置记忆和状态"),
+        BotCommand("resetquota", "重置为公共额度"),
         BotCommand("model", "切换大脑模型"),
         BotCommand("setkey", "配置 API Token"),
         BotCommand("setapi", "切换 API 提供商"),
@@ -49,6 +51,7 @@ def main():
         app.add_handler(CommandHandler("aris", aris_cmd))
         app.add_handler(CommandHandler("ask", ask_cmd))
         app.add_handler(CommandHandler("reset", reset_cmd))
+        app.add_handler(CommandHandler("resetquota", resetquota_cmd))
         app.add_handler(CommandHandler("model", model_cmd))
         app.add_handler(CommandHandler("setkey", set_key))
         app.add_handler(CommandHandler("setapi", set_api))

@@ -17,10 +17,17 @@ def init_db():
             user_id INTEGER PRIMARY KEY,
             groq_key TEXT,
             gemini_key TEXT,
+            grok_key TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    
+    # 数据库迁移：添加 grok_key 列（如果不存在）
+    try:
+        cursor.execute("ALTER TABLE user_api_keys ADD COLUMN grok_key TEXT")
+    except sqlite3.OperationalError:
+        pass  # 列已存在，忽略错误
 
         # 用户使用记录表（用于统计总使用人数）
     cursor.execute("""
@@ -87,7 +94,7 @@ def get_user_api_keys(user_id):
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
-    cursor.execute("SELECT groq_key, gemini_key FROM user_api_keys WHERE user_id = ?", (user_id,))
+    cursor.execute("SELECT groq_key, gemini_key, grok_key FROM user_api_keys WHERE user_id = ?", (user_id,))
     row = cursor.fetchone()
     conn.close()
     
@@ -97,6 +104,8 @@ def get_user_api_keys(user_id):
             keys['groq'] = row['groq_key']
         if row['gemini_key']:
             keys['gemini'] = row['gemini_key']
+        if row['grok_key']:
+            keys['grok'] = row['grok_key']
         return keys
     return {}
 
@@ -105,14 +114,20 @@ def set_user_api_key(user_id, api_type, key):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    if api_type.lower() == 'groq':
+    api_type = api_type.lower()
+    if api_type == 'groq':
         cursor.execute("""
             INSERT OR REPLACE INTO user_api_keys (user_id, groq_key, updated_at)
             VALUES (?, ?, ?)
         """, (user_id, key, datetime.now()))
-    elif api_type.lower() == 'gemini':
+    elif api_type == 'gemini':
         cursor.execute("""
             INSERT OR REPLACE INTO user_api_keys (user_id, gemini_key, updated_at)
+            VALUES (?, ?, ?)
+        """, (user_id, key, datetime.now()))
+    elif api_type == 'grok':
+        cursor.execute("""
+            INSERT OR REPLACE INTO user_api_keys (user_id, grok_key, updated_at)
             VALUES (?, ?, ?)
         """, (user_id, key, datetime.now()))
     
@@ -142,6 +157,35 @@ def set_user_api_provider(user_id, provider):
         INSERT OR REPLACE INTO user_api_provider (user_id, provider, updated_at)
         VALUES (?, ?, ?)
     """, (user_id, provider, datetime.now()))
+    
+    conn.commit()
+    conn.close()
+
+def clear_user_api_keys(user_id):
+    """清除用户的所有 API Key（用于重置为公共额度）"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        DELETE FROM user_api_keys WHERE user_id = ?
+    """, (user_id,))
+    
+    conn.commit()
+    conn.close()
+
+def reset_user_to_public_quota(user_id):
+    """重置用户为使用公共额度（清除密钥并恢复默认 API 提供商）"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # 清除所有 API Key
+    cursor.execute("DELETE FROM user_api_keys WHERE user_id = ?", (user_id,))
+    
+    # 重置为默认 API 提供商（groq）
+    cursor.execute("""
+        INSERT OR REPLACE INTO user_api_provider (user_id, provider, updated_at)
+        VALUES (?, ?, ?)
+    """, (user_id, 'groq', datetime.now()))
     
     conn.commit()
     conn.close()
