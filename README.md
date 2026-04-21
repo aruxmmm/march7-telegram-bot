@@ -43,9 +43,12 @@
 3. **绑定 Key (可选)**：私聊机器人发送 `/setkey gsk_你的Key`。
 4. **开始聊天**：直接发消息，或者用 `/aris` 调戏她吧！
 <img width="579" height="760" alt="屏幕截图 2026-04-05 170816" src="https://github.com/user-attachments/assets/240c01b0-cd30-48db-b298-597761b25392" />
-v0.1版图
+v0.1版本图
 <img width="765" height="827" alt="image" src="https://github.com/user-attachments/assets/041ce035-c3a5-4fb0-aef9-8897b11d015c" />
-v0.2版图
+v0.2版本图
+<img width="741" height="959" alt="image" src="https://github.com/user-attachments/assets/48494a7e-a1a8-4199-9932-f595fd36668e" />
+v0.3版本图<del>（不可以瑟瑟）<del>
+
 ---
 
 ## 📝 开发者说明 (如何自己部署)
