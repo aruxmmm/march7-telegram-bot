@@ -58,7 +58,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• <b>/setapi</b> - 🔌 切换 API 提供商 (Groq/Gemini/Grok)\n"
         "• <b>/reset</b> - 🧩 重置我们的所有记忆\n"
         "• <b>/resetquota</b> - 💸 重置为使用公共额度\n"
-        "• <b>/model</b> - 💎 切换本姑娘的大脑模型\n\n"
+        "• <b>/model</b> - 💎 切换本姑娘的大脑模型\n"
         "• <b>/stats</b> - 💾 查看本姑娘的统计数据\n\n"
 
         "<b>┃ 当前状态：</b>\n"
