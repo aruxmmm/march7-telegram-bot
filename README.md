@@ -47,7 +47,7 @@ v0.1版本图
 <img width="765" height="827" alt="image" src="https://github.com/user-attachments/assets/041ce035-c3a5-4fb0-aef9-8897b11d015c" />
 v0.2版本图
 <img width="741" height="959" alt="image" src="https://github.com/user-attachments/assets/48494a7e-a1a8-4199-9932-f595fd36668e" />
-v0.3版本图<del>（不可以瑟瑟）<del>
+v0.3版本图 <del>（不可以瑟瑟）</del>
 
 ---
 
