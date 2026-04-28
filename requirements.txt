@@ -2,3 +2,5 @@ python-telegram-bot
 openai
 python-dotenv
 google-genai 
+groq 
+python-dotenv

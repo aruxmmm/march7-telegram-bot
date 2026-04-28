@@ -22,14 +22,15 @@ try:
         
     # 测试生成
     response = client.models.generate_content(
-        model="gemini-2.5-flash", 
+        model="gemini-2.0-flash", 
         contents="你好，三月七！"
     )
     print(f"回复内容: {response.text}")
     
 except Exception as e:
     print(f"仍然遇到错误: {e}")
-    test_models = ["gemini-1.5-flash-latest", "gemini-2.5-flash-lite-preview", "gemini-1.5-pro-latest"]
+    from config import MODEL_LIST
+    test_models = [v["model"] for k, v in MODEL_LIST.items() if v.get("api") == "gemini"]
 
 for model_name in test_models:
     try:

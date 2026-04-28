@@ -166,10 +166,8 @@ def _build_help_text(user_id: int) -> str:
         "你可以直接在私聊里使用以下命令：\n"
         "• /start - 唤醒本姑娘\n"
         "• /help - 查看帮助\n"
-        "• /aris [内容] - 开始多轮对话\n"
         "• /ask [内容] - 单次快速问答\n"
         "• /setkey [groq|gemini] [key] - 配置 API Key\n"
-        "• /setapi [groq|gemini] - 切换 API 供应商\n"
         "• /model [模型名] - 切换模型\n"
         "• /reset - 重置对话和状态\n\n"
         f"当前模型：{current_model}\n"
@@ -214,45 +212,6 @@ def _handle_command(user_id: int, message_type: str, target_id: int, command: st
                 _send_text(message_type, target_id, "这个 Gemini Key 看起来不对，请检查是否正确。")
         else:
             _send_text(message_type, target_id, "本姑娘还没认识这个 API 哦，目前只支持 groq 和 gemini。")
-        return
-
-    if command == "setapi":
-        if len(args) < 1:
-            if DB_AVAILABLE:
-                current_api = get_user_api_provider(user_id).upper()
-            else:
-                current_api = user_api_provider.get(user_id, "groq").upper()
-            _send_text(message_type, target_id, f"当前 API：{current_api}\n用法：/setapi groq 或 /setapi gemini")
-            return
-        api_choice = args[0].lower()
-        if api_choice not in ["groq", "gemini"]:
-            _send_text(message_type, target_id, "本姑娘还不认识这个 API 呢！仅支持 groq 和 gemini。")
-            return
-        keys = _get_user_api_keys(user_id)
-        if isinstance(keys, str):
-            if api_choice == "groq":
-                _set_user_api_provider(user_id, "groq")
-                _set_user_model(user_id, "fast")
-                _send_text(message_type, target_id, "切换成功！现在本姑娘用 Groq 的脑子想事情啦～")
-                return
-            _send_text(message_type, target_id, "你还没给本姑娘配置 Gemini Key 呢～请先使用 /setkey gemini AI_xxx")
-            return
-        if api_choice not in keys:
-            _send_text(message_type, target_id, f"你还没配置 {api_choice.upper()} Key，请先用 /setkey {api_choice} key 绑定。")
-            return
-        _set_user_api_provider(user_id, api_choice)
-        _set_user_model(user_id, "fast")
-        _send_text(message_type, target_id, f"切换成功！现在本姑娘用 {api_choice.upper()} 的脑子想事情啦～")
-        return
-
-    if command == "aris":
-        user_input = " ".join(args)
-        if not user_input:
-            _send_text(message_type, target_id, "你想和本姑娘聊什么呀？快说出来嘛！")
-            return
-        reply_text = generate_reply(user_input, user_id)
-        update_memory(user_id, f"用户: {user_input}\n三月七: {reply_text}")
-        _send_text(message_type, target_id, reply_text)
         return
 
     if command == "ask":

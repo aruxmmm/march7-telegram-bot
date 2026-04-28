@@ -35,13 +35,9 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             key_status = "公共额度 (默认)"
 
-    # ===== ✅ 新增：统一模型 & API 显示（核心修复）=====
+   
     model = user_model.get(user_id, "fast")
-
-    # fast → groq_fast
-    real_model = DEFAULT_MODELS.get(model, model)
-
-    # 从模型反推 API（关键）
+    real_model = MODEL_LIST[model]["model"]
     api = MODEL_LIST.get(real_model, MODEL_LIST["groq_fast"])["api"].upper()
 
     # ===== 文本 =====
@@ -49,22 +45,23 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "<b>March 7th Terminal</b>\n"
         "嘿嘿，开拓者！本姑娘已经准备好拍照啦～📷\n\n"
 
-        "<b>┃ 菜单功能说明：</b>\n"
-        "• <b>/start</b> - 📸 唤醒本姑娘\n"
-        "• <b>/help</b> - 😘 显示这个超级棒的菜单\n"
-        "• <b>/aris</b> - 😽 开启长对话模式\n"
-        "• <b>/ask</b> - 🤸 快捷提问（不计入记忆）\n"
-        "• <b>/setkey</b> - 🔑 配置你自己的 API Token\n"
-        "• <b>/setapi</b> - 🔌 切换 API 提供商 (Groq/Gemini/Grok)\n"
-        "• <b>/reset</b> - 🧩 重置我们的所有记忆\n"
-        "• <b>/resetquota</b> - 💸 重置为使用公共额度\n"
-        "• <b>/model</b> - 💎 切换本姑娘的大脑模型\n"
-        "• <b>/stats</b> - 💾 查看本姑娘的统计数据\n\n"
+      
+        "<pre><code>"
+     "命令              功能说明\n"
+     "────────────────────────────────────\n"
+     "/start           📸 唤醒本姑娘\n"
+     "/help            😘 显示这个超级棒的菜单\n"
+     "/ask             🤸 快捷提问。这种模式下本姑娘不会占用大脑记忆。 \n"
+     "/setkey          🔑 配置你自己的 API Token\n"
+     "/reset           🧩 格式化记忆。如果本姑娘坏掉了，用这个修理！ \n"
+     "/resetquota      💸 如果你的api额度满了，可以用这个重置为使用公共额度。\n"
+     "/model           💎 切换本姑娘的大脑模型\n"
+     "/stats           💾 查看统计数据。想知道这段时间有多少人在和本姑娘聊天吗？\n"
+     "</code></pre>\n\n"
 
         "<b>┃ 当前状态：</b>\n"
         f"• 运行模型：<code>{real_model}</code>\n"
         f"• API 提供商：<code>{api}</code>\n"
-        f"• 好感等级：<code>{state['affinity']}</code>\n"
         f"• 能量来源：<code>{key_status}</code>\n\n"
 
         "<b>┃ 相关链接：</b>\n"

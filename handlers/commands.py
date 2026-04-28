@@ -11,7 +11,7 @@ from handlers.help import help_cmd
 
 # 导入数据库函数
 try:
-    from core.database import get_user_api_keys, set_user_api_key, get_user_api_provider, set_user_api_provider
+    from core.database import get_user_api_keys, set_user_api_key, set_user_api_provider
     DB_AVAILABLE = True
 except ImportError:
     DB_AVAILABLE = False
@@ -81,75 +81,10 @@ async def set_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("「本姑娘还没装那个 API 的驱动呢！现在支持 groq、gemini、grok 哦～」")
 
 
-async def set_api(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """切换用户使用的 API 供应商"""
-    from config import user_api_provider, DEFAULT_MODELS, MODEL_LIST
-    
-    user_id = update.effective_user.id
-    
-    if not context.args:
-        if DB_AVAILABLE:
-            current = get_user_api_provider(user_id)
-        else:
-            current = user_api_provider.get(user_id, "groq")
-            
-        await update.message.reply_text(
-            f"「当前使用的是 {current.upper()} 的脑子呢～」\n\n"
-            "要切换的话，告诉本姑娘呀：\n"
-            "<code>/setapi groq</code>　<code>/setapi gemini</code>　<code>/setapi grok</code>",
-            parse_mode="HTML"
-        )
-        return
-    
-    api_choice = context.args[0].lower()
-    if api_choice not in ["groq", "gemini", "grok"]:      # ← 新增 grok
-        await update.message.reply_text("「本姑娘还不认识这个 API 呢！现在支持 groq、gemini、grok 哦～」")
-        return
-    
-    # 检查是否配置了该 API 的 Key
-    if DB_AVAILABLE:
-        user_api_keys = get_user_api_keys(user_id)
-    else:
-        user_api_keys = user_keys.get(user_id, {})
-        
-    if isinstance(user_api_keys, str):   # 旧格式兼容
-        if api_choice == "groq":
-            if DB_AVAILABLE:
-                set_user_api_provider(user_id, "groq")
-            user_api_provider[user_id] = "groq"
-            user_model[user_id] = "fast"
-            await update.message.reply_text(f"「切换成功！现在本姑娘用 Groq 的脑子想事情啦～」")
-            return
-        else:
-            await update.message.reply_text(f"「唔...你还没给本姑娘配置 {api_choice.upper()} 的能量块呢～」")
-            return
-    
-    if api_choice not in user_api_keys and not (api_choice == "groq" and isinstance(user_api_keys, str)):
-        await update.message.reply_text(f"「唔...你还没给本姑娘配置 {api_choice.upper()} 的能量块呢，快用 /setkey {api_choice} xxx 告诉我吧～」")
-        return
-    
-    # 保存切换
-    if DB_AVAILABLE:
-        set_user_api_provider(user_id, api_choice)
-    user_api_provider[user_id] = api_choice
-    user_model[user_id] = "fast"
-    
-    await update.message.reply_text(f"「切换成功！现在本姑娘用 {api_choice.upper()} 的脑子想事情啦～」")
-
-
 # 下面几个函数基本不变，只保留必要部分（已确认无冲突）
 async def start_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("(跳到你面前，举起相机) 「咔嚓！嘿嘿，新朋友的样子记录下来啦！」")
     await help_cmd(update, context)
-
-async def aris_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_input = " ".join(context.args)
-    if not user_input:
-        await update.message.reply_text("「你想和本姑娘聊什么呀？快说出来嘛！」")
-        return
-    reply_text = generate_reply(user_input, update.message.from_user.id)
-    update_memory(update.message.from_user.id, f"用户: {user_input}\n三月七: {reply_text}")
-    await update.message.reply_text(reply_text)
 
 async def ask_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = " ".join(context.args)
@@ -189,26 +124,31 @@ async def resetquota_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             del user_keys[user_id]
     await update.message.reply_text("(清空了私密配置) 「所有个人密钥已删除，现在使用公共额度啦～」")
 
+def prettify_model_name(model_name: str) -> str:
+    parts = model_name.split("-")
+    formatted = []
+    for part in parts:
+        if part.isupper() or part.isdigit():
+            formatted.append(part)
+        elif part.replace('.', '', 1).isdigit():
+            formatted.append(part)
+        else:
+            formatted.append(part.capitalize())
+    return " ".join(formatted)
+
+
 async def model_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    from config import MODEL_LIST
+    from config import MODEL_LIST, DEFAULT_MODELS
     
     user_id = update.message.from_user.id
     
     if not context.args:
-        groq_models = [k for k, v in MODEL_LIST.items() if v.get("api") == "groq"]
-        gemini_models = [k for k, v in MODEL_LIST.items() if v.get("api") == "gemini"]
-        grok_models = [k for k, v in MODEL_LIST.items() if v.get("api") == "grok"]   # ← 新增
-        
-        help_text = "「本姑娘的脑子有这么几种啦～」\n\n"
-        if groq_models:
-            help_text += f"<b>Groq:</b> {', '.join(groq_models)}\n"
-        if gemini_models:
-            help_text += f"<b>Gemini:</b> {', '.join(gemini_models)}\n"
-        if grok_models:
-            help_text += f"<b>Grok (xAI):</b> {', '.join(grok_models)}\n\n"
-        help_text += "用法：<code>/model groq_fast</code>\n<code>/model gemini_fast</code>\n <code>/model grok_fast</code> \n或其他型号～"
-        
-        await update.message.reply_text(help_text, parse_mode=ParseMode.HTML)
+        help_text, reply_markup = build_provider_menu(user_id)
+        await update.message.reply_text(
+            help_text,
+            parse_mode=ParseMode.HTML,
+            reply_markup=reply_markup
+        )
         return
     
     m = context.args[0].lower()
@@ -218,8 +158,107 @@ async def model_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             from core.database import set_user_model
             set_user_model(user_id, m)
         api_type = MODEL_LIST[m]["api"]
-        await update.message.reply_text(f"切换成功！本姑娘现在用 {api_type.upper()} 的 <b>{m}</b> 模式呢～", parse_mode=ParseMode.HTML)
+        real_model = MODEL_LIST[m]["model"]
+        await update.message.reply_text(
+            f"切换成功！本姑娘现在用 {api_type.upper()} 的 <b>{m}</b>（{real_model}）模式呢～",
+            parse_mode=ParseMode.HTML
+        )
     else:
         await update.message.reply_text("「本姑娘还没装那个模型呢！用 /model 查看可用的哦～」")
+
+
+def build_provider_menu(user_id: int):
+    current_model_key = user_model.get(user_id, "fast")
+    current_real_model = DEFAULT_MODELS.get(current_model_key, current_model_key)
+    current_api = MODEL_LIST.get(current_real_model, MODEL_LIST["groq_fast"])["api"].upper()
+    current_model_name = prettify_model_name(MODEL_LIST.get(current_real_model, MODEL_LIST["groq_fast"])["model"])
+
+    help_text = (
+        "请选择希望使用的 API 供应商：\n\n"
+        f"当前模型：<b>{current_api} {current_model_name}</b>\n\n"
+       
+    )
+    keyboard = [
+        [InlineKeyboardButton("Groq", callback_data="model_api:groq")],
+        [InlineKeyboardButton("Gemini", callback_data="model_api:gemini")],
+        [InlineKeyboardButton("Grok", callback_data="model_api:grok")],
+        [InlineKeyboardButton("取消 ❌", callback_data="model_cancel")],
+    ]
+    return help_text, InlineKeyboardMarkup(keyboard)
+
+
+def build_model_menu(provider: str):
+    filtered = [k for k, v in MODEL_LIST.items() if v.get("api") == provider]
+    if not filtered:
+        return None, None
+
+    help_text = (
+        f"已选择 <b>{provider.upper()}</b>，现在请选择具体模型：\n\n"
+        "点击想用的型号。"
+    )
+    keyboard = [
+        [InlineKeyboardButton(prettify_model_name(MODEL_LIST[k]["model"]), callback_data=f"model_select:{k}")]
+        for k in filtered
+    ]
+    keyboard.append([
+        InlineKeyboardButton("返回 API 选择", callback_data="model_back"),
+        InlineKeyboardButton("取消 ❌", callback_data="model_cancel")
+    ])
+    return help_text, InlineKeyboardMarkup(keyboard)
+
+
+async def model_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query:
+        return
+
+    data = query.data or ""
+    await query.answer()
+
+    if data == "model_cancel":
+        await query.edit_message_text("「已取消模型切换，保持当前设置不变喽～」")
+        return
+
+    if data == "model_back":
+        help_text, reply_markup = build_provider_menu(query.from_user.id)
+        await query.edit_message_text(help_text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
+        return
+
+    if data.startswith("model_api:"):
+        provider = data.split(":", 1)[1]
+        help_text, reply_markup = build_model_menu(provider)
+        if help_text is None:
+            await query.edit_message_text("这个 API 目前没有可选的模型了。")
+            return
+        await query.edit_message_text(help_text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
+        return
+
+    if data.startswith("model_select:"):
+        selected_model = data.split(":", 1)[1]
+        if selected_model not in MODEL_LIST:
+            await query.edit_message_text("「这个模型好像不存在了，请重新 /model 选择一次～」")
+            return
+
+        user_id = query.from_user.id
+        user_model[user_id] = selected_model
+        if DB_AVAILABLE:
+            from core.database import set_user_model, set_user_api_provider
+            set_user_model(user_id, selected_model)
+            set_user_api_provider(user_id, MODEL_LIST[selected_model]["api"])
+        else:
+            from config import user_api_provider
+            user_api_provider[user_id] = MODEL_LIST[selected_model]["api"]
+
+        api_type = MODEL_LIST[selected_model]["api"].upper()
+        real_model = MODEL_LIST[selected_model]["model"]
+        readable = prettify_model_name(real_model)
+
+        await query.edit_message_text(
+            f"切换成功！本姑娘现在用 {api_type} 的 <b>{readable}</b> 模式啦～",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    await query.edit_message_text("「我听不懂这个按钮呐，重新 /model 试试吧～」")
 
 

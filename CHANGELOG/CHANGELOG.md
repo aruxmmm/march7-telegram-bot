@@ -6,7 +6,7 @@
 
 ## 🎯 概述
 
-v2.0 引入了 **Groq** 和 **Google Gemini** 双引擎支持，用户现在可以灵活选择和切换 AI 提供商，获得更好的性能和成本优化。
+v0.2 引入了 **Groq** 和 **Google Gemini** 双引擎支持，用户现在可以灵活选择和切换 AI 提供商，获得更好的性能和成本优化。
 
 ---
 
@@ -80,7 +80,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 MODEL_LIST = {
     "groq_fast": {"api": "groq", "model": "llama-3.3-70b-versatile"},
     "groq_smart": {"api": "groq", "model": "mixtral-8x7b-32768"},
-    "gemini_fast": {"api": "gemini", "model": "gemini-2.5-flash"},
+    "gemini_fast": {"api": "gemini", "model": "gemini-1.5-flash"},
     "gemini_smart": {"api": "gemini", "model": "gemini-1.5-pro"},
 }
 
@@ -253,8 +253,8 @@ FutureWarning: google.generativeai 包已停止维护
 
 | 版本 | 日期 | 说明 |
 |------|------|------|
-| v0.2 | 2026.04.06 | 🎉 多 API 支持、Gemini 集成 |
-| v0.1 | 之前 | 初始版本（仅 Groq） |
+| v2.0 | 2026.04.06 | 🎉 多 API 支持、Gemini 集成 |
+| v1.0 | 之前 | 初始版本（仅 Groq） |
 
 ---
 
