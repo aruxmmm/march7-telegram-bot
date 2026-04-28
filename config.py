@@ -33,7 +33,7 @@ if QQ_BOT_ENABLED:
 MODEL_LIST = {
     # Groq 模型
     "groq_fast": {"api": "groq", "model": "llama-3.3-70b-versatile"},
-    "groq_smart": {"api": "groq", "model": "qwen3-32b"},
+    "groq_smart": {"api": "groq", "model": "qwen"},
     # Gemini 模型
     "gemini_fast": {"api": "gemini", "model": "gemini-2.5-flash"},
     "gemini_smart": {"api": "gemini", "model": "Gemini 3.1 Flash Lite"},
