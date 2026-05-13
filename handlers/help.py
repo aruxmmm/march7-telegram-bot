@@ -1,5 +1,5 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.constants import ParseMode
+from telegram.constants import ParseMode, ChatAction
 from telegram.ext import ContextTypes
 from core.state import get_state, user_model
 from config import user_keys, MODEL_LIST, DEFAULT_MODELS
@@ -14,6 +14,12 @@ except ImportError:
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from config import user_api_provider
+    
+    # 发送正在输入的状态指示符
+    await context.bot.send_chat_action(
+        chat_id=update.effective_chat.id,
+        action=ChatAction.TYPING
+    )
     
     user_id = update.effective_user.id
     state = get_state(user_id)

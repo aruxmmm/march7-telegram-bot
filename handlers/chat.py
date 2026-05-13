@@ -1,4 +1,5 @@
 from telegram import Update
+from telegram.constants import ChatAction
 from telegram.ext import ContextTypes
 from core.state import update_state
 from core.llm import generate_reply
@@ -11,6 +12,12 @@ async def handle_normal_chat(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return
     user_id = update.message.from_user.id
     user_input = update.message.text
+
+    # 发送正在输入的状态指示符
+    await context.bot.send_chat_action(
+        chat_id=update.effective_chat.id,
+        action=ChatAction.TYPING
+    )
 
     update_state(user_id, user_input)
     reply_text = generate_reply(user_input, user_id)

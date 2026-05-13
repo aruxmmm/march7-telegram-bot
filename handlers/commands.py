@@ -1,5 +1,5 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
-from telegram.constants import ParseMode
+from telegram.constants import ParseMode, ChatAction
 from telegram.ext import ContextTypes
 from core.state import get_state, user_model, user_state
 from core.memory import memory_db
@@ -91,6 +91,13 @@ async def ask_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user_input:
         await update.message.reply_text("「提问也要带上内容哦，不然本姑娘猜不到呢！」")
         return
+    
+    # 发送正在输入的状态指示符
+    await context.bot.send_chat_action(
+        chat_id=update.effective_chat.id,
+        action=ChatAction.TYPING
+    )
+    
     reply_text = generate_reply(user_input, update.message.from_user.id, use_memory=False)
     await update.message.reply_text(f"<b>[单次提问]</b>\n{reply_text}", parse_mode=ParseMode.HTML)
 

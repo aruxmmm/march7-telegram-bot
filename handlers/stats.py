@@ -1,8 +1,15 @@
 from telegram import Update
+from telegram.constants import ChatAction
 from telegram.ext import ContextTypes
 from core.database import get_total_users, get_active_users
 
 async def stats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # 发送正在输入的状态指示符
+    await context.bot.send_chat_action(
+        chat_id=update.effective_chat.id,
+        action=ChatAction.TYPING
+    )
+    
     total = get_total_users()
     active_7 = get_active_users(7)
     active_30 = get_active_users(30)
