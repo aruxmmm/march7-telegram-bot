@@ -77,6 +77,30 @@ pip install -r requirements.txt
 ```bash
 python main.py
 ```
+
+### 5. Docker 部署（推荐）
+如果你想使用 Docker 部署，请确保已安装 Docker 和 Docker Compose。
+
+#### 使用 Docker Compose（推荐）
+1. 确保 `.env` 文件已配置（见步骤 3）。
+2. 运行以下命令：
+```bash
+docker-compose up --build
+```
+
+#### 仅使用 Docker
+```bash
+# 构建镜像
+docker build -t march7-bot .
+
+# 运行容器（记得设置环境变量）
+docker run -d --name march7-bot \
+  -e TELEGRAM_TOKEN=your_token \
+  -e GROQ_API_KEY=your_key \
+  -v $(pwd)/march7_bot.db:/app/march7_bot.db \
+  march7-bot
+```
+
 > **aruxmmm的碎碎念**：
 > “这个项目提供了bot的整体大框架，其实你自己就只用改一下prompt就可以开发属于自己的bot了。不过自己记得要新建token哦。”😘 
 ---
