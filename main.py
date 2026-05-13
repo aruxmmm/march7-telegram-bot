@@ -6,6 +6,21 @@ from handlers.commands import start_cmd, ask_cmd, reset_cmd, resetquota_cmd, mod
 from handlers.help import help_cmd
 from handlers.chat import handle_normal_chat
 from handlers.stats import stats_cmd
+from flask import Flask
+from threading import Thread
+import os
+
+app_web = Flask(__name__)
+
+@app_web.route("/")
+def home():
+    return "March7 Bot is running!"
+
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    app_web.run(host="0.0.0.0", port=port)
+
+Thread(target=run_web).start()
 
 if QQ_BOT_ENABLED:
     from qq_main import start_qq_bot
