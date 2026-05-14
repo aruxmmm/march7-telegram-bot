@@ -41,11 +41,19 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             key_status = "公共额度 (默认)"
 
-   
-    model = user_model.get(user_id, "fast")
+    model = user_model.get(user_id, "groq_fast")
+# 兼容旧 "fast"/"smart" key
+    model = DEFAULT_MODELS.get(model, model)
+# 如果还是不在 MODEL_LIST 里，拼 api_model 再试一次
+    if model not in MODEL_LIST:
+        if DB_AVAILABLE:
+          api_provider = get_user_api_provider(user_id)
+        else:
+          api_provider = user_api_provider.get(user_id, "groq")
+        model = f"{api_provider}_{model}" if f"{api_provider}_{model}" in MODEL_LIST else "groq_fast"
     real_model = MODEL_LIST[model]["model"]
-    api = MODEL_LIST.get(real_model, MODEL_LIST["groq_fast"])["api"].upper()
-
+    api = MODEL_LIST[model]["api"].upper()
+    
     # ===== 文本 =====
     help_text = (
         "<b>March 7th Terminal</b>\n"
