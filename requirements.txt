@@ -3,4 +3,3 @@ openai
 python-dotenv
 google-genai
 groq
-flask
