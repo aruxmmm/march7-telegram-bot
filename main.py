@@ -23,6 +23,7 @@ except Exception as e:
 # 日志配置
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 async def post_init(application):
     commands = [
