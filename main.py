@@ -1,4 +1,5 @@
 import logging
+import os
 from telegram import BotCommand
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, CallbackQueryHandler, filters
 from config import TELEGRAM_TOKEN, QQ_BOT_ENABLED
@@ -66,7 +67,18 @@ def main():
 
     if app:
         print("三月七 Bot 已就位，拍照模式开启！📷")
-        app.run_polling()
+        webhook_url = os.environ.get("WEBHOOK_URL", "").rstrip("/")
+        port = int(os.environ.get("PORT", 8080))
+        if webhook_url:
+            app.run_webhook(
+                listen="0.0.0.0",
+                port=port,
+                webhook_url=f"{webhook_url}/{TELEGRAM_TOKEN}",
+                url_path=TELEGRAM_TOKEN,
+            )
+        else:
+            # 本地开发没有设置 WEBHOOK_URL 时回退到 polling
+            app.run_polling()
     elif QQ_BOT_ENABLED:
         print("仅 QQ Bot 已启动，请保持程序运行。按 Ctrl+C 退出。")
         try:
