@@ -66,12 +66,15 @@ pip install -r requirements.txt
 ```
 
 ### 3. 配置环境变量
-在本地新建一个 `.env` 文件，或者在云端平台（如 Railway / HuggingFace）的设置页面添加以下变量：
+在本地新建一个 `.env` 文件，或者在云端平台（如 Railway / HuggingFace）的设置页面添加以下变量：(LLM_API_KEY只需要任一即可运行)
 
 | 变量名 | 获取渠道 | 说明 |
 | :--- | :--- | :--- |
 | `TELEGRAM_TOKEN` | [@BotFather](https://t.me/Botfather) | 机器人的身份令牌 |
-| `GROQ_API_KEY` | [Groq Console](https://console.groq.com/keys) | AI 大脑的能源 Key |
+| `GROQ_API_KEY` | [Groq Console](https://console.groq.com/keys) | AI 大脑的能源 Key （稳定快速，推荐）|
+| `GEMINI_API_KEY` | [Google AI Studio ](https://aistudio.google.com/) | AI 大脑的能源 Key|
+| `DB_PATH` | march7_bot.db | 数据库位置 |
+
 
 ### 4. 运行程序
 ```bash
@@ -111,7 +114,7 @@ docker run -d --name march7-bot \
 - **V0.2.1**: 2026/4/8 修复了gemini旧版不兼容的问题，完成了v0.2中的数据库设计，小三月变得更聪明了。
 - **V0.3.0**: 2026/4/21 增加了Grok-api，修改了部分代码结构，<del>不可以瑟瑟</del>。
 - **V0.3.1**: 2026/4/28 更新了模型列表，修改了部分界面，铲除冗余代码-ing。
-- **V0.3.2**: 2026/5/14 Docker化了仓库，增加了正在输入的显示，更新了部署服务器。
+- **V0.3.2**: 2026/5/14 Docker化了仓库，增加了正在输入的显示，更新了部署服务器，America服务器，稳定好用。
 - *更多功能正在开发中。...* 📷
 
 ---
