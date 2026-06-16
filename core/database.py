@@ -297,13 +297,13 @@ def set_user_model(user_id, model):
 
 # ==================== User Memory 操作 ====================
 
-def get_user_memory(user_id):
-    """获取用户的对话记忆（默认读取 march7）"""
+def get_user_memory(user_id, prompt_name='march7'):
+    """获取用户的对话记忆，按 (user_id, prompt_name) 返回。"""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
-    cursor.execute("SELECT memory_text FROM user_memory WHERE user_id = ? AND prompt_name = ?", (user_id, 'march7'))
+    cursor.execute("SELECT memory_text FROM user_memory_prompt WHERE user_id = ? AND prompt_name = ?", (user_id, prompt_name))
     row = cursor.fetchone()
     conn.close()
 
