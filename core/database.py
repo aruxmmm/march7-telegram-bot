@@ -74,16 +74,16 @@ def init_db():
     
     # 用户对话记忆表
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS user_memory (
+        CREATE TABLE IF NOT EXISTS user_memory_prompt (
             user_id INTEGER PRIMARY KEY,
             memory_text TEXT DEFAULT '',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    # 向后兼容：为 user_memory 添加 prompt_name 列（默认 march7）
+    # 向后兼容：为 user_memory_prompt 添加 prompt_name 列（默认 march7）
     try:
-        cursor.execute("ALTER TABLE user_memory ADD COLUMN prompt_name TEXT DEFAULT 'march7'")
+        cursor.execute("ALTER TABLE user_memory_prompt ADD COLUMN prompt_name TEXT DEFAULT 'march7'")
     except sqlite3.OperationalError:
         # 列已存在或不支持，忽略
         pass
@@ -297,25 +297,25 @@ def set_user_model(user_id, model):
 
 # ==================== User Memory 操作 ====================
 
-def get_user_memory(user_id, prompt_name='march7'):
+def get_user_memory_prompt(user_id, prompt_name='march7'):
     """获取用户的对话记忆，按 (user_id, prompt_name) 返回。"""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
-    cursor.execute("SELECT memory_text FROM user_memory_prompt WHERE user_id = ? AND prompt_name = ?", (user_id, prompt_name))
+    cursor.execute("SELECT memory_text FROM user_memory_prompt_prompt WHERE user_id = ? AND prompt_name = ?", (user_id, prompt_name))
     row = cursor.fetchone()
     conn.close()
 
     return row['memory_text'] if row and row['memory_text'] else "（这是本姑娘和你的新冒险！）"
 
-def append_user_memory(user_id, text, prompt_name='march7'):
+def append_user_memory_prompt(user_id, text, prompt_name='march7'):
     """追加用户的对话记忆（按 prompt 存储，限制长度）"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     # 获取现有记忆（针对指定 prompt）
-    cursor.execute("SELECT memory_text FROM user_memory WHERE user_id = ? AND prompt_name = ?", (user_id, prompt_name))
+    cursor.execute("SELECT memory_text FROM user_memory_prompt WHERE user_id = ? AND prompt_name = ?", (user_id, prompt_name))
     row = cursor.fetchone()
     current_memory = row[0] if row and row[0] else ""
 
@@ -325,14 +325,14 @@ def append_user_memory(user_id, text, prompt_name='march7'):
     new_memory = "\n".join(lines)
 
     cursor.execute("""
-        INSERT OR REPLACE INTO user_memory (user_id, memory_text, prompt_name, updated_at)
+        INSERT OR REPLACE INTO user_memory_prompt (user_id, memory_text, prompt_name, updated_at)
         VALUES (?, ?, ?, ?)
     """, (user_id, new_memory, prompt_name, datetime.now()))
 
     conn.commit()
     conn.close()
 
-def clear_user_memory(user_id, prompt_name=None):
+def clear_user_memory_prompt(user_id, prompt_name=None):
     """清空用户的对话记忆。
     - prompt_name=None: 清空该用户所有 prompt 的记忆（向后兼容）
     - prompt_name='name': 仅清空指定 prompt 的记忆
@@ -342,23 +342,23 @@ def clear_user_memory(user_id, prompt_name=None):
 
     if prompt_name:
         cursor.execute("""
-            INSERT OR REPLACE INTO user_memory (user_id, memory_text, prompt_name, updated_at)
+            INSERT OR REPLACE INTO user_memory_prompt (user_id, memory_text, prompt_name, updated_at)
             VALUES (?, ?, ?, ?)
         """, (user_id, "", prompt_name, datetime.now()))
     else:
         # 清空所有记录（将每条 prompt 的 memory_text 设为空）
-        cursor.execute("SELECT prompt_name FROM user_memory WHERE user_id = ?", (user_id,))
+        cursor.execute("SELECT prompt_name FROM user_memory_prompt WHERE user_id = ?", (user_id,))
         rows = cursor.fetchall()
         if rows:
             for r in rows:
                 pn = r[0] if r and r[0] else 'march7'
                 cursor.execute("""
-                    INSERT OR REPLACE INTO user_memory (user_id, memory_text, prompt_name, updated_at)
+                    INSERT OR REPLACE INTO user_memory_prompt (user_id, memory_text, prompt_name, updated_at)
                     VALUES (?, ?, ?, ?)
                 """, (user_id, "", pn, datetime.now()))
         else:
             cursor.execute("""
-                INSERT OR REPLACE INTO user_memory (user_id, memory_text, prompt_name, updated_at)
+                INSERT OR REPLACE INTO user_memory_prompt (user_id, memory_text, prompt_name, updated_at)
                 VALUES (?, ?, ?, ?)
             """, (user_id, "", 'march7', datetime.now()))
 
@@ -377,7 +377,7 @@ def load_all_users_from_db():
         SELECT DISTINCT user_id FROM (
             SELECT user_id FROM user_api_keys
             UNION SELECT user_id FROM user_state
-            UNION SELECT user_id FROM user_memory
+            UNION SELECT user_id FROM user_memory_prompt
             UNION SELECT user_id FROM user_model
         )
     """)
@@ -412,7 +412,7 @@ def delete_user_data(user_id):
     cursor.execute("DELETE FROM user_api_provider WHERE user_id = ?", (user_id,))
     cursor.execute("DELETE FROM user_state WHERE user_id = ?", (user_id,))
     cursor.execute("DELETE FROM user_model WHERE user_id = ?", (user_id,))
-    cursor.execute("DELETE FROM user_memory WHERE user_id = ?", (user_id,))
+    cursor.execute("DELETE FROM user_memory_prompt WHERE user_id = ?", (user_id,))
     
     conn.commit()
     conn.close()
@@ -481,3 +481,14 @@ def get_user_interaction_stats(user_id: int):
 # 启动时自动初始化数据库
 if not DB_PATH.exists():
     init_db()
+
+
+# 向后兼容的旧接口名（保持现有代码不变）
+def get_user_memory(user_id, prompt_name='march7'):
+    return get_user_memory_prompt(user_id, prompt_name)
+
+def append_user_memory(user_id, text, prompt_name='march7'):
+    return append_user_memory_prompt(user_id, text, prompt_name)
+
+def clear_user_memory(user_id, prompt_name=None):
+    return clear_user_memory_prompt(user_id, prompt_name)
