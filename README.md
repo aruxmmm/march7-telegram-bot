@@ -67,12 +67,15 @@ pip install -r requirements.txt
 ```
 
 ### 3. 配置环境变量
-在本地新建一个 `.env` 文件，或者在云端平台（如 Railway / HuggingFace）的设置页面添加以下变量：
+在本地新建一个 `.env` 文件，或者在云端平台（如 Railway / HuggingFace）的设置页面添加以下变量：(LLM_API_KEY只需要任一即可运行)
 
 | 变量名 | 获取渠道 | 说明 |
 | :--- | :--- | :--- |
 | `TELEGRAM_TOKEN` | [@BotFather](https://t.me/Botfather) | 机器人的身份令牌 |
-| `GROQ_API_KEY` | [Groq Console](https://console.groq.com/keys) | AI 大脑的能源 Key |
+| `GROQ_API_KEY` | [Groq Console](https://console.groq.com/keys) | AI 大脑的能源 Key （稳定快速，推荐）|
+| `GEMINI_API_KEY` | [Google AI Studio ](https://aistudio.google.com/) | AI 大脑的能源 Key|
+| `DB_PATH` | march7_bot.db | 数据库位置 |
+
 
 ### 4. 运行程序
 ```bash
