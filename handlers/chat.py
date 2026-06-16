@@ -21,6 +21,8 @@ async def handle_normal_chat(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     update_state(user_id, user_input)
     reply_text = generate_reply(user_input, user_id)
-    update_memory(user_id, f"用户: {user_input}\n三月七: {reply_text}")
+    from core.state import get_prompt_name
+    current_prompt = get_prompt_name(user_id)
+    update_memory(user_id, f"用户: {user_input}\n{current_prompt}: {reply_text}")
 
     await update.message.reply_text(reply_text)

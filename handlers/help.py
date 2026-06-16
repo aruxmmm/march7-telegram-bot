@@ -1,7 +1,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode, ChatAction
 from telegram.ext import ContextTypes
-from core.state import get_state, user_model
+from core.state import get_state, user_model, get_prompt_name
 from config import user_keys, MODEL_LIST, DEFAULT_MODELS
 
 # 导入数据库函数
@@ -23,6 +23,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     user_id = update.effective_user.id
     state = get_state(user_id)
+    current_prompt = get_prompt_name(user_id)
     
     # ===== 原有：Key / API 状态（不动）=====
     if DB_AVAILABLE:
@@ -60,21 +61,28 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "嘿嘿，开拓者！本姑娘已经准备好拍照啦～📷\n\n"
 
       
-        "<pre><code>"
-     "命令              功能说明\n"
+        "<b>命令</b>              <b>功能说明</b>\n"
      "────────────────────────────────────\n"
-     "/start           📸 唤醒本姑娘\n"
-     "/help            😘 显示这个超级棒的菜单\n"
-     "/ask             🤸 快捷提问。这种模式下本姑娘不会占用大脑记忆。 \n"
-     "/setkey          🔑 配置你自己的 API Token\n"
-     "/reset           🧩 格式化记忆。如果本姑娘坏掉了，用这个修理！ \n"
-     "/resetquota      💸 如果你的api额度满了，可以用这个重置为使用公共额度。\n"
-     "/model           💎 切换本姑娘的大脑模型\n"
-     "/stats           💾 查看统计数据。想知道这段时间有多少人在和本姑娘聊天吗？\n"
-     "</code></pre>\n\n"
+     "<code>/start</code> — 📸 唤醒本姑娘\n"
+     "<code>/help</code> — 😘 显示这个超级棒的菜单\n"
+     "<code>/ask</code> — 🤸 快捷提问，不占用记忆\n"
+     "<code>/setkey</code> — 🔑 配置你自己的 API Token\n"
+     "<code>/prompt</code> — 🎭 prompt 角色管理\n"
+     "    • /prompt              查看当前 prompt 和可用列表\n"
+     "    • /prompt list         查看可用 prompt\n"
+     "    • /prompt show         预览当前 prompt\n"
+        "    • /prompt show evernight  预览指定 prompt\n"
+        "    • /prompt evernight       切换为 evernight 角色\n"
+     "    • /prompt switch march7    切换回 march7 角色\n"
+     "<code>/reset</code> — 🧩 清空记忆，重新开始\n"
+     "<code>/resetquota</code> — 💸 重置为公共额度\n"
+     "<code>/model</code> — 💎 切换本姑娘的大脑模型\n"
+     "<code>/stats</code> — 💾 查看统计数据\n"
+     "\n"
 
         "<b>┃ 当前状态：</b>\n"
         f"• 运行模型：<code>{real_model}</code>\n"
+        f"• 当前角色：<code>{current_prompt}</code>\n"
         f"• API 提供商：<code>{api}</code>\n"
         f"• 能量来源：<code>{key_status}</code>\n\n"
 

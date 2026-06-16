@@ -1,3 +1,5 @@
+import pkgutil
+import prompt
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.constants import ParseMode, ChatAction
 from telegram.ext import ContextTypes
@@ -8,7 +10,8 @@ from core.memory import update_memory
 from config import user_keys
 from config import MODEL_LIST, DEFAULT_MODELS
 from handlers.help import help_cmd
-from prompt import march7
+
+AVAILABLE_PROMPTS = sorted([name for _, name, _ in pkgutil.iter_modules(prompt.__path__)])
 
 # 导入数据库函数
 try:
@@ -117,19 +120,6 @@ async def reset_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("(清空了相册) 「呼...虽然有点舍不得，但我们要重新开始咯！」")
 
 
-async def show_prompt_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """展示当前 prompt 的一段示例，方便用户确认角色设定。"""
-    user_id = update.message.from_user.id
-    # 读取当前 prompt 名称
-    current = get_prompt_name(user_id)
-    try:
-        mod = __import__(f"prompt.{current}", fromlist=["get_prompt"]) if current else None
-        sample = mod.get_prompt({"affinity":0, "emotion":"开心"}, "（这是本姑娘和你的新冒险！）", "你好") if mod else ""
-    except Exception:
-        sample = "示例不可用。"
-
-    await update.message.reply_text(f"当前 prompt：<b>{current}</b>\n\n示例节选：\n{sample[:1000]}", parse_mode=ParseMode.HTML)
-
 async def resetquota_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """重置为使用公共额度"""
     user_id = update.message.from_user.id
@@ -190,25 +180,96 @@ async def model_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def prompt_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """切换或查看可用 prompt（示例实现：仅支持 'march7' 及未来扩展）"""
+    """切换、查看或预览 prompt 角色"""
     user_id = update.message.from_user.id
+    args = [arg.lower() for arg in context.args]
 
-    if not context.args:
-        # 显示当前 prompt
-        current = get_prompt_name(user_id)
-        await update.message.reply_text(f"当前 prompt：<b>{current}</b>\n可用：march7", parse_mode=ParseMode.HTML)
+    if not args:
+        help_text, reply_markup = build_prompt_menu(user_id)
+        await update.message.reply_text(help_text, parse_mode=ParseMode.HTML, reply_markup=reply_markup)
         return
 
-    selected = context.args[0].lower()
-    # 目前仅 march7 可用，未来可加载更多 prompt 模块
-    if selected == 'march7':
-        set_prompt_name(user_id, 'march7')
-        if DB_AVAILABLE:
-            from core.database import set_user_prompt
-            set_user_prompt(user_id, 'march7')
-        await update.message.reply_text("切换成功！当前角色为 三月七，记忆将被保留。")
-    else:
-        await update.message.reply_text("未知的 prompt 名称。目前仅支持：march7")
+    action = args[0]
+    if action in ["list", "available"]:
+        available = ", ".join(AVAILABLE_PROMPTS)
+        await update.message.reply_text(
+            f"可用 prompt：{available}",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    if action in ["show", "preview"]:
+        target = args[1].lower() if len(args) > 1 else get_prompt_name(user_id)
+        if target not in AVAILABLE_PROMPTS:
+            available = ", ".join(AVAILABLE_PROMPTS)
+            await update.message.reply_text(
+                f"未知的 prompt 名称。目前支持：{available}",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        try:
+            mod = __import__(f"prompt.{target}", fromlist=["get_prompt"]) if target else None
+            sample = mod.get_prompt({"affinity": 0, "emotion": "开心"}, "（这是本姑娘和你的新冒险！）", "你好") if mod else ""
+        except Exception:
+            sample = "示例不可用。"
+
+        await update.message.reply_text(
+            f"Prompt：<b>{target}</b>\n\n示例节选：\n{sample[:1000]}",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    if action in AVAILABLE_PROMPTS:
+        set_prompt_name(user_id, action)
+        await update.message.reply_text(
+            f"切换成功！当前角色为 <b>{action}</b>，记忆将被保留。",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    if len(args) > 1 and args[0] in ["set", "switch"] and args[1] in AVAILABLE_PROMPTS:
+        selected = args[1]
+        set_prompt_name(user_id, selected)
+        await update.message.reply_text(
+            f"切换成功！当前角色为 <b>{selected}</b>，记忆将被保留。",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    available = ", ".join(AVAILABLE_PROMPTS)
+    await update.message.reply_text(
+        f"命令无效。可用 prompt：{available}\n使用 /prompt <name> 切换，/prompt show 预览。",
+        parse_mode=ParseMode.HTML
+    )
+
+
+def build_prompt_menu(user_id: int):
+    current_prompt = get_prompt_name(user_id)
+    help_text = (
+        f"当前角色：<b>{current_prompt}</b>\n"
+        "请选择要切换的角色（点击按钮即可切换）："
+    )
+
+    # 将按钮排成两列，当前角色带上 ✅ 标记
+    keyboard = []
+    row = []
+    for name in AVAILABLE_PROMPTS:
+        label = f"{name} {'✅' if name == current_prompt else ''}".strip()
+        row.append(InlineKeyboardButton(label, callback_data=f"prompt_select:{name}"))
+        if len(row) == 2:
+            keyboard.append(row)
+            row = []
+    if row:
+        keyboard.append(row)
+
+    # 底部操作按钮
+    keyboard.append([
+        InlineKeyboardButton("🔍 预览当前角色", callback_data="prompt_show"),
+        InlineKeyboardButton("取消 ❌", callback_data="prompt_cancel")
+    ])
+
+    return help_text, InlineKeyboardMarkup(keyboard)
 
 
 def build_provider_menu(user_id: int):
@@ -299,6 +360,37 @@ async def model_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await query.edit_message_text(
             f"切换成功！本姑娘现在用 {api_type} 的 <b>{readable}</b> 模式啦～",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    if data == "prompt_cancel":
+        await query.edit_message_text("「已取消 prompt 选择，保持当前角色不变～」")
+        return
+
+    if data == "prompt_show":
+        target = get_prompt_name(query.from_user.id)
+        try:
+            mod = __import__(f"prompt.{target}", fromlist=["get_prompt"]) if target else None
+            sample = mod.get_prompt({"affinity": 0, "emotion": "开心"}, "（这是本姑娘和你的新冒险！）", "你好") if mod else ""
+        except Exception:
+            sample = "示例不可用。"
+
+        await query.edit_message_text(
+            f"Prompt：<b>{target}</b>\n\n示例节选：\n{sample[:1000]}",
+            parse_mode=ParseMode.HTML
+        )
+        return
+
+    if data.startswith("prompt_select:"):
+        selected_prompt = data.split(":", 1)[1]
+        if selected_prompt not in AVAILABLE_PROMPTS:
+            await query.edit_message_text("这个 prompt 好像不存在了，请重新点击 /prompt。")
+            return
+
+        set_prompt_name(query.from_user.id, selected_prompt)
+        await query.edit_message_text(
+            f"切换成功！当前角色为 <b>{selected_prompt}</b>，记忆将被保留。",
             parse_mode=ParseMode.HTML
         )
         return

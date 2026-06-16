@@ -11,12 +11,11 @@ def get_memory(user_id):
     """获取用户的对话记忆，优先从数据库读取"""
     try:
         prompt_name = get_prompt_name(user_id)
-        # db_get_user_memory 仍保持向后兼容的默认实现
         try:
-            return db_get_user_memory(user_id)
-        except TypeError:
-            # 如果 db_get_user_memory 支持 prompt 参数
             return db_get_user_memory(user_id, prompt_name)
+        except TypeError:
+            # db_get_user_memory 仍保持向后兼容的旧签名
+            return db_get_user_memory(user_id)
     except:
         # 降级到内存存储
         # 内存级别改为按 prompt 键保存：{(user_id, prompt): text}
@@ -27,10 +26,9 @@ def update_memory(user_id, text):
     """更新用户的对话记忆"""
     try:
         prompt_name = get_prompt_name(user_id)
-        try:
-            db_append_user_memory(user_id, text)
-        except TypeError:
-            db_append_user_memory(user_id, text, prompt_name)
+        db_append_user_memory(user_id, text, prompt_name)
+    except TypeError:
+        db_append_user_memory(user_id, text)
     except:
         # 降级到内存存储
         prompt_name = get_prompt_name(user_id)

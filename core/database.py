@@ -72,21 +72,16 @@ def init_db():
         )
     """)
     
-    # 用户对话记忆表
+    # 用户对话记忆表（按 prompt 划分）
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_memory_prompt (
-            user_id INTEGER PRIMARY KEY,
+            user_id INTEGER,
+            prompt_name TEXT DEFAULT 'march7',
             memory_text TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY(user_id, prompt_name)
         )
     """)
-    # 向后兼容：为 user_memory_prompt 添加 prompt_name 列（默认 march7）
-    try:
-        cursor.execute("ALTER TABLE user_memory_prompt ADD COLUMN prompt_name TEXT DEFAULT 'march7'")
-    except sqlite3.OperationalError:
-        # 列已存在或不支持，忽略
-        pass
     
     # 用户 Prompt 选择表（用于多 prompt 切换）
     cursor.execute("""
@@ -303,7 +298,7 @@ def get_user_memory_prompt(user_id, prompt_name='march7'):
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
-    cursor.execute("SELECT memory_text FROM user_memory_prompt_prompt WHERE user_id = ? AND prompt_name = ?", (user_id, prompt_name))
+    cursor.execute("SELECT memory_text FROM user_memory_prompt WHERE user_id = ? AND prompt_name = ?", (user_id, prompt_name))
     row = cursor.fetchone()
     conn.close()
 
