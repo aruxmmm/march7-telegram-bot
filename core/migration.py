@@ -12,6 +12,7 @@ def migrate_data_to_db():
         from core.database import (
             set_user_api_key, set_user_api_provider, update_user_state,
             set_user_model, append_user_memory, get_user_memory
+                , set_user_prompt
         )
         from config import user_keys, user_api_provider
         from core.state import user_state, user_model
@@ -70,16 +71,9 @@ def migrate_data_to_db():
             if memory_text and memory_text != "（这是本姑娘和你的新冒险！）":
                 # 直接覆盖而不是追加
                 try:
-                    from core.database import DB_PATH
-                    import sqlite3
-                    conn = sqlite3.connect(DB_PATH)
-                    cursor = conn.cursor()
-                    cursor.execute("""
-                        INSERT OR REPLACE INTO user_memory (user_id, memory_text, updated_at)
-                        VALUES (?, ?, CURRENT_TIMESTAMP)
-                    """, (user_id, memory_text))
-                    conn.commit()
-                    conn.close()
+                        # 保存为默认 prompt 'march7'
+                        append_user_memory(user_id, memory_text, prompt_name='march7')
+                        set_user_prompt(user_id, 'march7')
                 except Exception as e:
                     print(f"    警告：迁移用户 {user_id} 的记忆失败: {e}")
             migrated_users.add(user_id)

@@ -10,7 +10,8 @@ from config import (
     DEFAULT_MODELS,
     user_keys
 )
-from prompt.march7 import get_prompt
+import importlib
+from core.state import get_prompt_name
 
 # 数据库支持（可选）
 try:
@@ -94,7 +95,18 @@ def generate_reply(user_input, user_id, use_memory=True):
     model_name = config["model"]
 
     # ===== 3. prompt 拆分 =====
-    system_prompt = get_prompt(state, memory, "")
+    # 根据用户选择动态加载 prompt 模块（例如 prompt.march7）
+    prompt_name = get_prompt_name(user_id) if 'user_id' in locals() or True else 'march7'
+    try:
+        prompt_mod = importlib.import_module(f"prompt.{prompt_name}")
+        system_prompt = prompt_mod.get_prompt(state, memory, "")
+    except Exception:
+        # 回退到默认的 march7 prompt
+        try:
+            prompt_mod = importlib.import_module("prompt.march7")
+            system_prompt = prompt_mod.get_prompt(state, memory, "")
+        except Exception as e:
+            raise e
     user_prompt = user_input
 
     # ===== 4. 调用 =====

@@ -1,13 +1,14 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.constants import ParseMode, ChatAction
 from telegram.ext import ContextTypes
-from core.state import get_state, user_model, user_state
+from core.state import get_state, user_model, user_state, get_prompt_name, set_prompt_name
 from core.memory import memory_db
 from core.llm import generate_reply
 from core.memory import update_memory
 from config import user_keys
 from config import MODEL_LIST, DEFAULT_MODELS
 from handlers.help import help_cmd
+from prompt import march7
 
 # 导入数据库函数
 try:
@@ -115,6 +116,20 @@ async def reset_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         update_user_state(user_id, 0, "开心")
     await update.message.reply_text("(清空了相册) 「呼...虽然有点舍不得，但我们要重新开始咯！」")
 
+
+async def show_prompt_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """展示当前 prompt 的一段示例，方便用户确认角色设定。"""
+    user_id = update.message.from_user.id
+    # 读取当前 prompt 名称
+    current = get_prompt_name(user_id)
+    try:
+        mod = __import__(f"prompt.{current}", fromlist=["get_prompt"]) if current else None
+        sample = mod.get_prompt({"affinity":0, "emotion":"开心"}, "（这是本姑娘和你的新冒险！）", "你好") if mod else ""
+    except Exception:
+        sample = "示例不可用。"
+
+    await update.message.reply_text(f"当前 prompt：<b>{current}</b>\n\n示例节选：\n{sample[:1000]}", parse_mode=ParseMode.HTML)
+
 async def resetquota_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """重置为使用公共额度"""
     user_id = update.message.from_user.id
@@ -172,6 +187,28 @@ async def model_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     else:
         await update.message.reply_text("「本姑娘还没装那个模型呢！用 /model 查看可用的哦～」")
+
+
+async def prompt_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """切换或查看可用 prompt（示例实现：仅支持 'march7' 及未来扩展）"""
+    user_id = update.message.from_user.id
+
+    if not context.args:
+        # 显示当前 prompt
+        current = get_prompt_name(user_id)
+        await update.message.reply_text(f"当前 prompt：<b>{current}</b>\n可用：march7", parse_mode=ParseMode.HTML)
+        return
+
+    selected = context.args[0].lower()
+    # 目前仅 march7 可用，未来可加载更多 prompt 模块
+    if selected == 'march7':
+        set_prompt_name(user_id, 'march7')
+        if DB_AVAILABLE:
+            from core.database import set_user_prompt
+            set_user_prompt(user_id, 'march7')
+        await update.message.reply_text("切换成功！当前角色为 三月七，记忆将被保留。")
+    else:
+        await update.message.reply_text("未知的 prompt 名称。目前仅支持：march7")
 
 
 def build_provider_menu(user_id: int):

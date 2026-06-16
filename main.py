@@ -3,7 +3,7 @@ import os
 from telegram import BotCommand
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, CallbackQueryHandler, filters
 from config import TELEGRAM_TOKEN, QQ_BOT_ENABLED
-from handlers.commands import start_cmd, ask_cmd, reset_cmd, resetquota_cmd, model_cmd, model_callback, set_key
+from handlers.commands import start_cmd, ask_cmd, reset_cmd, resetquota_cmd, model_cmd, model_callback, set_key, prompt_cmd, show_prompt_cmd
 from handlers.help import help_cmd
 from handlers.chat import handle_normal_chat
 from handlers.stats import stats_cmd
@@ -33,6 +33,8 @@ async def post_init(application):
         BotCommand("reset", "重置记忆和状态"),
         BotCommand("resetquota", "重置为公共额度"),
         BotCommand("model", "切换大脑模型"),
+        BotCommand("prompt", "切换/查看角色 prompt"),
+        BotCommand("showprompt", "预览当前角色 prompt"),
         BotCommand("setkey", "配置 API Token"),
         BotCommand("stats", "查看统计数据")
         
@@ -52,6 +54,8 @@ def main():
         app.add_handler(CommandHandler("reset", reset_cmd))
         app.add_handler(CommandHandler("resetquota", resetquota_cmd))
         app.add_handler(CommandHandler("model", model_cmd))
+        app.add_handler(CommandHandler("prompt", prompt_cmd))
+        app.add_handler(CommandHandler("showprompt", show_prompt_cmd))
         app.add_handler(CallbackQueryHandler(model_callback, pattern=r"^(?:model_select:|model_api:|model_cancel|model_back)"))
         app.add_handler(CommandHandler("setkey", set_key))
         app.add_handler(CommandHandler("stats", stats_cmd))
