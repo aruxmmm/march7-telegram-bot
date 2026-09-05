@@ -12,6 +12,8 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "")
 GROK_API_KEY = os.getenv("GROK_API_KEY")
+AGNES_API_KEY = os.getenv("AGNES_API_KEY", "")
+AGNES_BASE_URL = os.getenv("AGNES_BASE_URL", "https://apihub.agnes-ai.com/v1").rstrip("/")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434/v1").rstrip("/")
 OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY", "ollama")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "").strip()
@@ -66,6 +68,11 @@ MODEL_LIST = {
     # Grok 模型
     "grok_fast":  {"api": "grok", "model": "grok-4-1-fast"},  
     "grok_smart": {"api": "grok", "model": "grok-4.20"},        
+    # Agnes AI 文本模型
+    "agnes_fast": {"api": "agnes", "model": "agnes-2.5-flash"},
+    "agnes_smart": {"api": "agnes", "model": "agnes-2.5-pro"},
+    "agnes_pro_alpha": {"api": "agnes", "model": "agnes-2.5-pro-alpha"},
+    "agnes_pro_beta": {"api": "agnes", "model": "agnes-2.5-pro-beta"},
 }
 
 
@@ -106,7 +113,7 @@ if not any((GROQ_API_KEY, GEMINI_API_KEY, GROK_API_KEY, OLLAMA_MODELS, OLLAMA_MO
 
 # 默认模型列表映射（兼容旧格式）。没有云端 Key 时默认使用本地模型。
 DEFAULT_MODELS = {
-    "fast": "groq_fast",
+    "fast": "agnes_fast",
     "smart": "groq_smart"
 }
 if not any((GROQ_API_KEY, GEMINI_API_KEY, GROK_API_KEY)):

@@ -247,6 +247,7 @@ def _handle_command(user_id: int, message_type: str, target_id: int, command: st
             groq_models = [k for k, v in MODEL_LIST.items() if v.get("api") == "groq"]
             gemini_models = [k for k, v in MODEL_LIST.items() if v.get("api") == "gemini"]
             ollama_models = [k for k, v in MODEL_LIST.items() if v.get("api") == "ollama"]
+            agnes_models = [k for k, v in MODEL_LIST.items() if v.get("api") == "agnes"]
             help_text = "本姑娘的脑子有这么几种啦～\n"
             if groq_models:
                 help_text += f"Groq: {', '.join(groq_models)}\n"
@@ -254,6 +255,8 @@ def _handle_command(user_id: int, message_type: str, target_id: int, command: st
                 help_text += f"Gemini: {', '.join(gemini_models)}\n"
             if ollama_models:
                 help_text += f"Ollama: {', '.join(ollama_models)}\n"
+            if agnes_models:
+                help_text += f"Agnes AI: {', '.join(agnes_models)}\n"
             help_text += "用法：/model groq_fast 或 /model gemini_fast"
             _send_text(message_type, target_id, help_text)
             return

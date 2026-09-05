@@ -42,7 +42,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             key_status = "公共额度 (默认)"
 
-    model = user_model.get(user_id, "groq_fast")
+    model = user_model.get(user_id, "fast")
 # 兼容旧 "fast"/"smart" key
     model = DEFAULT_MODELS.get(model, model)
 # 如果还是不在 MODEL_LIST 里，拼 api_model 再试一次

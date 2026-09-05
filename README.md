@@ -2,7 +2,7 @@
 
 > “每一天都要留下新的记忆！嘿嘿，开拓者，快来和我合影吧～”
 
-这是一个基于 Python 开发的 Telegram 机器人，可接入 **Groq、Gemini、Grok 或本地 Ollama**。她不仅仅是一个 AI，还是那个活泼元气、爱吐槽、爱拍照的**三月七**！
+这是一个基于 Python 开发的 Telegram 机器人，可接入 **Agnes AI、Groq、Gemini、Grok 或本地 Ollama**。默认使用 Agnes 2.5 Flash，也支持自动发现本机 Ollama 模型。她不仅仅是一个 AI，还是那个活泼元气、爱吐槽、爱拍照的**三月七**！
 
 ---
 
@@ -10,6 +10,8 @@
 
 - **元气对话**：深度还原三月七的人设，说话自带（心理/动作描写）。
 - **动态记忆**：她能记住你最近说过的几句话，聊天不再“断片”。
+- **多模型切换**：通过 `/model` 在云端模型和本地 Ollama 模型之间切换。
+- **记忆查看**：通过 `/memory` 查看当前角色使用的对话记忆。
 
 ---
 
@@ -24,6 +26,7 @@
 | `/ask` | 快捷提问。这种模式下本姑娘不会占用大脑记忆。 |
 | `/setkey` | **[重要]** 绑定自己的 Groq、Gemini 或 Grok Token（建议私聊发送）。 |
 | `/reset` | 格式化记忆。如果本姑娘坏掉了，用这个修理！ |
+| `/memory` | 查看当前角色的对话记忆。 |
 | `/resetquota` | 如果你的api额度满了，可以用这个重置为使用公共额度。|
 | `/model` | 切换本姑娘的大脑模型 |
 | `/stats` | 查看统计数据。想知道这段时间有多少人在和本姑娘聊天吗？ |
@@ -36,7 +39,7 @@
 如果你是第一次使用，请按照以下步骤操作：
 
 1. **寻找机器人**：开拓者，你可以使用最下面的连接，或者扫描二维码，或者在 Telegram 搜索 `@march7_ai_bot` 并点击 `Start`。
-2. **配置模型**：配置任意一个云端 API Key，或启动本地 Ollama。
+2. **配置模型**：配置任意一个云端 API Key，或启动本地 Ollama。默认模型为 Agnes 2.5 Flash。
 3. **绑定 Key（可选）**：私聊机器人发送 `/setkey groq gsk_你的Key`。
 4. **开始聊天**：直接发消息，开始调戏她吧！
 
@@ -71,12 +74,22 @@ pip install -r requirements.txt
 | 变量名 | 获取渠道 | 说明 |
 | :--- | :--- | :--- |
 | `TELEGRAM_TOKEN` | [@BotFather](https://t.me/Botfather) | 机器人的身份令牌 |
+| `AGNES_API_KEY` | [Agnes AI](https://www.agnes-ai.com/) | Agnes AI API Key；默认模型为 `agnes-2.5-flash` |
+| `AGNES_BASE_URL` | `https://apihub.agnes-ai.com/v1` | Agnes AI OpenAI 兼容接口地址（可选） |
 | `GROQ_API_KEY` | [Groq Console](https://console.groq.com/keys) | Groq API Key |
 | `GEMINI_API_KEY` | [Google AI Studio ](https://aistudio.google.com/) | Gemini API Key |
 | `GROK_API_KEY` | [xAI Console](https://console.x.ai/) | Grok API Key |
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434/v1` | Ollama 的 OpenAI 兼容地址 |
-| `OLLAMA_MODEL` | 未设置 | 可选：指定无云端 Key 时使用的默认本地模型；未设置时自动选择已安装模型 |
+| `OLLAMA_MODEL` | 未设置 | 可选：指定一个额外的本地模型；未设置时自动读取 Ollama 已安装的全部模型 |
 | `DB_PATH` | `march7_bot.db` | SQLite 数据库位置；相对路径以项目根目录为基准 |
+
+Ollama 模型会在启动时以及执行 `/model` 时自动刷新。安装或删除模型无需修改源代码：
+```bash
+ollama pull qwen3.5:9b-mlx
+ollama list
+```
+
+启动机器人后，使用 `/model` 选择 `Agnes AI` 或 `Ollama（本地）`。
 
 
 ### 4. 运行程序
@@ -102,6 +115,7 @@ docker build -t march7-bot .
 # 运行容器（记得设置环境变量）
 docker run -d --name march7-bot \
   -e TELEGRAM_TOKEN=your_token \
+  -e AGNES_API_KEY=your_agnes_key \
   -e GROQ_API_KEY=your_key \
   -v $(pwd)/march7_bot.db:/app/march7_bot.db \
   march7-bot
@@ -119,6 +133,7 @@ docker run -d --name march7-bot \
 - **V0.3.1**: 2026/4/28 更新了模型列表，修改了部分界面，铲除冗余代码-ing。
 - **V0.3.2**: 2026/5/14 Docker化了仓库，增加了正在输入的显示，更新了部署服务器。
 - **V0.4.0**: 2026/6/27 添加了角色切换功能，新添了长夜月，黑化强三倍，去试试新的prompt吧。
+- **V0.4.1**: 2026/9/5 添加了免费的Agnes-api（杨教授，我们喜欢你），并作为默认模型，添加了调用ollma的选项，
 - *更多功能正在开发中。...* 📷
 
 ---

@@ -6,6 +6,8 @@ from config import (
     GROQ_API_KEY,
     GEMINI_API_KEY,
     GROK_API_KEY,
+    AGNES_API_KEY,
+    AGNES_BASE_URL,
     OLLAMA_API_KEY,
     OLLAMA_BASE_URL,
     MODEL_LIST,
@@ -45,6 +47,8 @@ def get_api_key(user_id, provider):
         return GEMINI_API_KEY
     elif provider == "ollama":
         return OLLAMA_API_KEY
+    elif provider == "agnes":
+        return AGNES_API_KEY
 
     return None
 
@@ -75,6 +79,12 @@ def get_client(provider, api_key):
         return OpenAI(
             api_key=api_key,
             base_url=OLLAMA_BASE_URL
+        )
+
+    elif provider == "agnes":
+        return OpenAI(
+            api_key=api_key,
+            base_url=AGNES_BASE_URL
         )
 
     else:

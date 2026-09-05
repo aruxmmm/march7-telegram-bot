@@ -305,6 +305,7 @@ def build_provider_menu(user_id: int):
         [InlineKeyboardButton("Groq", callback_data="model_api:groq")],
         [InlineKeyboardButton("Gemini", callback_data="model_api:gemini")],
         [InlineKeyboardButton("Grok", callback_data="model_api:grok")],
+        [InlineKeyboardButton("Agnes AI", callback_data="model_api:agnes")],
         [InlineKeyboardButton("Ollama（本地）", callback_data="model_api:ollama")],
         [InlineKeyboardButton("取消 ❌", callback_data="model_cancel")],
     ]
