@@ -138,7 +138,7 @@ docker run -d --name march7-bot \
 
 ---
 
-## 📸 扫码开始冒险
+## 📸 扫码以开始使用，或者点击下方tg小按钮
 
 <img width="300" alt="march7_ai_bot_qrcode" src="https://github.com/user-attachments/assets/265ae68e-d3bc-4833-8556-746ffc6aac6d" />
 
