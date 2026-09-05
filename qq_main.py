@@ -120,7 +120,7 @@ def _get_user_api_keys(user_id):
 def _get_user_api_provider(user_id):
     if DB_AVAILABLE:
         return get_user_api_provider(user_id)
-    return user_api_provider.get(user_id, "groq")
+    return user_api_provider.get(user_id, "agnes")
 
 
 def _set_user_api_key(user_id, api_type, key):
@@ -149,7 +149,7 @@ def _build_help_text(user_id: int) -> str:
         current_api = get_user_api_provider(user_id).upper()
         keys = get_user_api_keys(user_id)
     else:
-        current_api = user_api_provider.get(user_id, "groq").upper()
+        current_api = user_api_provider.get(user_id, "agnes").upper()
         keys = _get_user_api_keys(user_id)
 
     if isinstance(keys, str):
@@ -168,7 +168,7 @@ def _build_help_text(user_id: int) -> str:
         "• /start - 唤醒本姑娘\n"
         "• /help - 查看帮助\n"
         "• /ask [内容] - 单次快速问答\n"
-        "• /setkey [groq|gemini] [key] - 配置 API Key\n"
+        "• /setkey [groq|gemini|grok|agnes] [key] - 配置云端 API Key\n"
         "• /model [模型名] - 切换模型\n"
         "• /reset - 重置对话和状态\n\n"
         "• /memory - 查看当前记忆\n"
@@ -193,10 +193,10 @@ def _handle_command(user_id: int, message_type: str, target_id: int, command: st
 
     if command == "setkey":
         if message_type != "private":
-            _send_text(message_type, target_id, "请在私聊中发送 /setkey groq gsk_xxx 或 /setkey gemini AI_xxx，以保护你的密钥安全。")
+            _send_text(message_type, target_id, "请在私聊中发送 /setkey groq gsk_xxx、/setkey gemini AI_xxx 或 /setkey agnes your_key，以保护你的密钥安全。")
             return
         if len(args) < 2:
-            _send_text(message_type, target_id, "用法：/setkey groq gsk_xxx 或 /setkey gemini AI_xxx")
+            _send_text(message_type, target_id, "用法：/setkey groq gsk_xxx、/setkey gemini AI_xxx 或 /setkey agnes your_key")
             return
         api_type = args[0].lower()
         new_key = args[1]
@@ -212,8 +212,16 @@ def _handle_command(user_id: int, message_type: str, target_id: int, command: st
                 _send_text(message_type, target_id, "好咧！本姑娘已经记住你的 Gemini 能量块了～")
             else:
                 _send_text(message_type, target_id, "这个 Gemini Key 看起来不对，请检查是否正确。")
+        elif api_type == "agnes":
+            if len(new_key) > 20:
+                _set_user_api_key(user_id, "agnes", new_key)
+                _send_text(message_type, target_id, "好咧！本姑娘已经记住你的 Agnes AI 能量块了～")
+            else:
+                _send_text(message_type, target_id, "这个 Agnes AI Key 好像太短了，请检查一下哦～")
+        elif api_type == "ollama":
+            _send_text(message_type, target_id, "Ollama 是本地模型，不需要 API Key！启动 Ollama 后直接用 /model 选择就好啦～")
         else:
-            _send_text(message_type, target_id, "本姑娘还没认识这个 API 哦，目前只支持 groq 和 gemini。")
+            _send_text(message_type, target_id, "目前支持 groq、gemini、grok、agnes 和 ollama 哦。")
         return
 
     if command == "ask":
@@ -257,7 +265,7 @@ def _handle_command(user_id: int, message_type: str, target_id: int, command: st
                 help_text += f"Ollama: {', '.join(ollama_models)}\n"
             if agnes_models:
                 help_text += f"Agnes AI: {', '.join(agnes_models)}\n"
-            help_text += "用法：/model groq_fast 或 /model gemini_fast"
+            help_text += "用法：/model agnes_fast 或 /model ollama_<模型名>"
             _send_text(message_type, target_id, help_text)
             return
         m = args[0].lower()

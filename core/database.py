@@ -21,6 +21,7 @@ def init_db():
             groq_key TEXT,
             gemini_key TEXT,
             grok_key TEXT,
+            agnes_key TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -29,6 +30,10 @@ def init_db():
     # 数据库迁移：添加 grok_key 列（如果不存在）
     try:
         cursor.execute("ALTER TABLE user_api_keys ADD COLUMN grok_key TEXT")
+    except sqlite3.OperationalError:
+        pass  # 列已存在，忽略错误
+    try:
+        cursor.execute("ALTER TABLE user_api_keys ADD COLUMN agnes_key TEXT")
     except sqlite3.OperationalError:
         pass  # 列已存在，忽略错误
 
@@ -107,7 +112,7 @@ def get_user_api_keys(user_id):
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
-    cursor.execute("SELECT groq_key, gemini_key, grok_key FROM user_api_keys WHERE user_id = ?", (user_id,))
+    cursor.execute("SELECT groq_key, gemini_key, grok_key, agnes_key FROM user_api_keys WHERE user_id = ?", (user_id,))
     row = cursor.fetchone()
     conn.close()
     
@@ -119,6 +124,8 @@ def get_user_api_keys(user_id):
             keys['gemini'] = row['gemini_key']
         if row['grok_key']:
             keys['grok'] = row['grok_key']
+        if row['agnes_key']:
+            keys['agnes'] = row['agnes_key']
         return keys
     return {}
 
@@ -152,6 +159,14 @@ def set_user_api_key(user_id, api_type, key):
                 grok_key = excluded.grok_key,
                 updated_at = excluded.updated_at
         """, (user_id, key, datetime.now()))
+    elif api_type == 'agnes':
+        cursor.execute("""
+            INSERT INTO user_api_keys (user_id, agnes_key, updated_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                agnes_key = excluded.agnes_key,
+                updated_at = excluded.updated_at
+        """, (user_id, key, datetime.now()))
     
     conn.commit()
     conn.close()
@@ -168,7 +183,7 @@ def get_user_api_provider(user_id):
     row = cursor.fetchone()
     conn.close()
     
-    return row['provider'] if row else 'groq'
+    return row['provider'] if row else 'agnes'
 
 def set_user_api_provider(user_id, provider):
     """设置用户的 API 提供商"""
@@ -203,11 +218,11 @@ def reset_user_to_public_quota(user_id):
     # 清除所有 API Key
     cursor.execute("DELETE FROM user_api_keys WHERE user_id = ?", (user_id,))
     
-    # 重置为默认 API 提供商（groq）
+    # 重置为默认 API 提供商（agnes）
     cursor.execute("""
         INSERT OR REPLACE INTO user_api_provider (user_id, provider, updated_at)
         VALUES (?, ?, ?)
-    """, (user_id, 'groq', datetime.now()))
+    """, (user_id, 'agnes', datetime.now()))
     
     conn.commit()
     conn.close()
@@ -408,6 +423,7 @@ def get_user_summary(user_id):
         "provider": provider,
         "has_groq_key": "groq" in keys,
         "has_gemini_key": "gemini" in keys,
+        "has_agnes_key": "agnes" in keys,
     }
 
 def delete_user_data(user_id):
@@ -485,9 +501,8 @@ def get_user_interaction_stats(user_id: int):
         return dict(row)
     return {"total_interactions": 0, "last_interaction": None}
 
-# 启动时自动初始化数据库
-if not DB_PATH.exists():
-    init_db()
+# 启动时自动初始化数据库并执行幂等迁移
+init_db()
 
 
 # 向后兼容的旧接口名（保持现有代码不变）

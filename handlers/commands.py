@@ -36,6 +36,8 @@ async def set_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "<b>Groq:</b> <code>/setkey groq gsk_xxxxxx</code>\n"
             "<b>Gemini:</b> <code>/setkey gemini AI_xxxxxx</code>\n"
             "<b>Grok (xAI):</b> <code>/setkey grok xai-xxxxxx</code>\n\n"
+            "<b>Agnes AI:</b> <code>/setkey agnes your_api_key</code>\n"
+            "<b>Ollama:</b> 本地服务无需 Key，请直接启动 Ollama。\n\n"
             "开拓者，可以同时配置多个哦！",
             parse_mode="HTML"
         )
@@ -82,9 +84,23 @@ async def set_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("「好咧！本姑娘已经记住你的 Grok (xAI) 能量块了～ 三月七最强形态已就绪！」")
         else:
             await update.message.reply_text("「唔...这个 Grok Key 看起来怪怪的，应该是以 xai- 开头的哦～」")
+
+    elif api_type == "agnes":
+        if len(new_key) > 20:
+            if DB_AVAILABLE:
+                set_user_api_key(user_id, "agnes", new_key)
+            if user_id not in user_keys or not isinstance(user_keys[user_id], dict):
+                user_keys[user_id] = {}
+            user_keys[user_id]["agnes"] = new_key
+            await update.message.reply_text("「好咧！本姑娘已经记住你的 Agnes AI 能量块了～」")
+        else:
+            await update.message.reply_text("「这个 Agnes AI Key 好像太短了，请检查一下哦～」")
+
+    elif api_type == "ollama":
+        await update.message.reply_text("「Ollama 是本地模型，不需要 API Key！启动 Ollama 后直接用 /model 选择就好啦～」")
     
     else:
-        await update.message.reply_text("「本姑娘还没装那个 API 的驱动呢！现在支持 groq、gemini、grok 哦～」")
+        await update.message.reply_text("「现在支持 groq、gemini、grok、agnes 和 ollama 哦～」")
 
 
 # 下面几个函数基本不变，只保留必要部分（已确认无冲突）

@@ -32,7 +32,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         apis = list(user_api_keys_db.keys()) if user_api_keys_db else []
         key_status = f"个人私有 ({', '.join([x.upper() for x in apis])})" if apis else "公共额度 (默认)"
     else:
-        current_api = user_api_provider.get(user_id, "groq").upper()
+        current_api = user_api_provider.get(user_id, "agnes").upper()
         user_api_keys = user_keys.get(user_id, {})
         if isinstance(user_api_keys, str):
             key_status = "个人私有 (Groq)"
@@ -43,15 +43,15 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             key_status = "公共额度 (默认)"
 
     model = user_model.get(user_id, "fast")
-# 兼容旧 "fast"/"smart" key
+    # 兼容旧 "fast"/"smart" key
     model = DEFAULT_MODELS.get(model, model)
-# 如果还是不在 MODEL_LIST 里，拼 api_model 再试一次
+    # 如果还是不在 MODEL_LIST 里，拼 api_model 再试一次
     if model not in MODEL_LIST:
         if DB_AVAILABLE:
-          api_provider = get_user_api_provider(user_id)
+            api_provider = get_user_api_provider(user_id)
         else:
-          api_provider = user_api_provider.get(user_id, "groq")
-        model = f"{api_provider}_{model}" if f"{api_provider}_{model}" in MODEL_LIST else "groq_fast"
+            api_provider = user_api_provider.get(user_id, "agnes")
+        model = f"{api_provider}_{model}" if f"{api_provider}_{model}" in MODEL_LIST else DEFAULT_MODELS["fast"]
     real_model = MODEL_LIST[model]["model"]
     api = MODEL_LIST[model]["api"].upper()
     
@@ -97,7 +97,8 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [
             InlineKeyboardButton("Groq Key 🔑", url="https://console.groq.com/keys"),
             InlineKeyboardButton("Gemini Key 🔑", url="https://makersuite.google.com/app/apikey"),
-            InlineKeyboardButton("Grok Key 🔑", url="https://console.x.ai/")
+            InlineKeyboardButton("Grok Key 🔑", url="https://console.x.ai/"),
+            InlineKeyboardButton("Agnes Key 🔑", url="https://www.agnes-ai.com/")
         ],
         [
             InlineKeyboardButton("加入讨论群 💬", url="https://t.me/+GMfVNKY3vuNjOTA9")
