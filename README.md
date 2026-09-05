@@ -32,14 +32,14 @@
 | :--- | :--- |
 | `/start` | 唤醒三月七，开始你们的冒险之旅！ |
 | `/help` | 召唤详细的图形化功能菜单。 |
-| `/ask` | 快捷提问。这种模式下本姑娘不会占用大脑记忆。 |
-| `/setkey` | **[重要]** 绑定自己的 Groq、Gemini 或 Grok Token（建议私聊发送）。 |
+| `/ask` | 快捷提问。这种模式下不会占用大脑记忆。 |
+| `/setkey` |  绑定自己的 Groq、Gemini 或 Grok Token。 |
 | `/reset` | 格式化记忆。如果本姑娘坏掉了，用这个修理！ |
 | `/memory` | 查看当前角色的对话记忆。 |
 | `/resetquota` | 如果你的api额度满了，可以用这个重置为使用公共额度。|
-| `/model` | 切换本姑娘的大脑模型 |
-| `/stats` | 查看统计数据。想知道这段时间有多少人在和本姑娘聊天吗？ |
-| `/prompt` | 切换或预览角色（交互式按钮） |
+| `/model` | 切换模型 |
+| `/stats` | 查看统计数据。 |
+| `/prompt` | 切换或预览角色 |
 
 ---
 
@@ -47,10 +47,10 @@
 
 如果你是第一次使用，请按照以下步骤操作：
 
-1. **寻找机器人**：开拓者，你可以使用最下面的连接，或者扫描二维码，或者在 Telegram 搜索 `@march7_ai_bot` 并点击 `Start`。
+1. **寻找机器人**：你可以使用[![Telegram Bot](https://img.shields.io/badge/Telegram-Bot-blue?style=for-the-badge&logo=telegram)](https://t.me/march7_ai_bot)，或者在 Telegram 搜索 `@march7_ai_bot` 并点击 `Start`。
 2. **配置模型**：配置任意一个云端 API Key，或启动本地 Ollama。默认模型为 Agnes 2.5 Flash。
 3. **绑定 Key（可选）**：私聊机器人发送 `/setkey groq gsk_你的Key`。
-4. **开始聊天**：直接发消息，开始调戏她吧！
+4. **开始聊天**：直接发消息，开始聊天吧！
 
 
 <img width="579" height="760" alt="屏幕截图 2026-04-05 170816" src="https://github.com/user-attachments/assets/240c01b0-cd30-48db-b298-597761b25392" />
