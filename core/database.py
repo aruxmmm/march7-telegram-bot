@@ -1,10 +1,13 @@
+import os
 import sqlite3
 import json
 from datetime import datetime
 from pathlib import Path
 
 # 数据库文件路径
-DB_PATH = Path(__file__).parent.parent / "march7_bot.db"
+# DB_PATH 允许部署环境把数据库放在持久化卷；相对路径仍以项目根目录为基准。
+_configured_db_path = Path(os.getenv("DB_PATH", "march7_bot.db"))
+DB_PATH = _configured_db_path if _configured_db_path.is_absolute() else Path(__file__).parent.parent / _configured_db_path
 
 def init_db():
     """初始化数据库表"""
@@ -127,18 +130,27 @@ def set_user_api_key(user_id, api_type, key):
     api_type = api_type.lower()
     if api_type == 'groq':
         cursor.execute("""
-            INSERT OR REPLACE INTO user_api_keys (user_id, groq_key, updated_at)
+            INSERT INTO user_api_keys (user_id, groq_key, updated_at)
             VALUES (?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                groq_key = excluded.groq_key,
+                updated_at = excluded.updated_at
         """, (user_id, key, datetime.now()))
     elif api_type == 'gemini':
         cursor.execute("""
-            INSERT OR REPLACE INTO user_api_keys (user_id, gemini_key, updated_at)
+            INSERT INTO user_api_keys (user_id, gemini_key, updated_at)
             VALUES (?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                gemini_key = excluded.gemini_key,
+                updated_at = excluded.updated_at
         """, (user_id, key, datetime.now()))
     elif api_type == 'grok':
         cursor.execute("""
-            INSERT OR REPLACE INTO user_api_keys (user_id, grok_key, updated_at)
+            INSERT INTO user_api_keys (user_id, grok_key, updated_at)
             VALUES (?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                grok_key = excluded.grok_key,
+                updated_at = excluded.updated_at
         """, (user_id, key, datetime.now()))
     
     conn.commit()

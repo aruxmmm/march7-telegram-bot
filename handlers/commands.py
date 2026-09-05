@@ -1,14 +1,16 @@
 import pkgutil
+from html import escape
 import prompt
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.constants import ParseMode, ChatAction
 from telegram.ext import ContextTypes
 from core.state import get_state, user_model, user_state, get_prompt_name, set_prompt_name
 from core.memory import memory_db
+from core.memory import get_memory
 from core.llm import generate_reply
 from core.memory import update_memory
 from config import user_keys
-from config import MODEL_LIST, DEFAULT_MODELS
+from config import MODEL_LIST, DEFAULT_MODELS, refresh_ollama_models
 from handlers.help import help_cmd
 
 AVAILABLE_PROMPTS = sorted([name for _, name, _ in pkgutil.iter_modules(prompt.__path__)])
@@ -103,7 +105,8 @@ async def ask_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     reply_text = generate_reply(user_input, update.message.from_user.id, use_memory=False)
-    await update.message.reply_text(f"<b>[单次提问]</b>\n{reply_text}", parse_mode=ParseMode.HTML)
+    # 模型输出属于不可信文本；不用 HTML 解析，避免 '<'、'&' 等字符导致发送失败。
+    await update.message.reply_text(f"[单次提问]\n{reply_text}")
 
 async def reset_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from core.memory import clear_memory
@@ -118,6 +121,20 @@ async def reset_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         clear_memory(user_id)
         update_user_state(user_id, 0, "开心")
     await update.message.reply_text("(清空了相册) 「呼...虽然有点舍不得，但我们要重新开始咯！」")
+
+
+async def memory_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """查看当前角色对应的对话记忆。"""
+    user_id = update.message.from_user.id
+    memory = get_memory(user_id)
+    if not memory or memory == "（这是本姑娘和你的新冒险！）":
+        await update.message.reply_text("「我们还没有共同记忆呢，先聊几句吧～」")
+        return
+
+    await update.message.reply_text(
+        f"<b>当前记忆</b>\n\n<pre>{escape(memory[-3500:])}</pre>",
+        parse_mode=ParseMode.HTML
+    )
 
 
 async def resetquota_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -150,6 +167,7 @@ def prettify_model_name(model_name: str) -> str:
 
 
 async def model_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    refresh_ollama_models()
     from config import MODEL_LIST, DEFAULT_MODELS
     
     user_id = update.message.from_user.id
@@ -287,12 +305,15 @@ def build_provider_menu(user_id: int):
         [InlineKeyboardButton("Groq", callback_data="model_api:groq")],
         [InlineKeyboardButton("Gemini", callback_data="model_api:gemini")],
         [InlineKeyboardButton("Grok", callback_data="model_api:grok")],
+        [InlineKeyboardButton("Ollama（本地）", callback_data="model_api:ollama")],
         [InlineKeyboardButton("取消 ❌", callback_data="model_cancel")],
     ]
     return help_text, InlineKeyboardMarkup(keyboard)
 
 
 def build_model_menu(provider: str):
+    if provider == "ollama":
+        refresh_ollama_models()
     filtered = [k for k, v in MODEL_LIST.items() if v.get("api") == provider]
     if not filtered:
         return None, None
@@ -396,5 +417,4 @@ async def model_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     await query.edit_message_text("「我听不懂这个按钮呐，重新 /model 试试吧～」")
-
 

@@ -6,6 +6,8 @@ from config import (
     GROQ_API_KEY,
     GEMINI_API_KEY,
     GROK_API_KEY,
+    OLLAMA_API_KEY,
+    OLLAMA_BASE_URL,
     MODEL_LIST,
     DEFAULT_MODELS,
     user_keys
@@ -41,6 +43,8 @@ def get_api_key(user_id, provider):
         return GROK_API_KEY
     elif provider == "gemini":
         return GEMINI_API_KEY
+    elif provider == "ollama":
+        return OLLAMA_API_KEY
 
     return None
 
@@ -65,6 +69,12 @@ def get_client(provider, api_key):
         return OpenAI(
             api_key=api_key,
             base_url="https://api.groq.com/openai/v1"
+        )
+
+    elif provider == "ollama":
+        return OpenAI(
+            api_key=api_key,
+            base_url=OLLAMA_BASE_URL
         )
 
     else:
@@ -147,10 +157,7 @@ def call_model(provider, model_name, user_id, system_prompt, user_prompt):
     if provider == "gemini":
         response = client.models.generate_content(
             model=model_name,
-            contents=[{
-                "role": "user",
-                "parts": [system_prompt + "\n\n" + user_prompt]
-            }]
+            contents=system_prompt + "\n\n" + user_prompt
         )
         return response.text
 
@@ -183,7 +190,9 @@ def handle_error(e):
     elif "429" in err:
         msg = "「问太多啦，本姑娘脑子有点累…等会儿再来！」"
 
-    elif "model" in err:
+    elif "model" in err and any(
+        phrase in err for phrase in ("not found", "does not exist", "unsupported", "invalid model")
+    ):
         msg = "「这个模型好像不存在呢，用 /model 看看支持哪些吧！」"
 
     else:

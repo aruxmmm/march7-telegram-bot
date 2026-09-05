@@ -75,6 +75,7 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "    • /prompt evernight       切换为 evernight 角色\n"
      "    • /prompt switch march7    切换回 march7 角色\n"
      "<code>/reset</code> — 🧩 清空记忆，重新开始\n"
+    "<code>/memory</code> — 🧠 查看当前记忆\n"
      "<code>/resetquota</code> — 💸 重置为公共额度\n"
      "<code>/model</code> — 💎 切换本姑娘的大脑模型\n"
      "<code>/stats</code> — 💾 查看统计数据\n"

@@ -2,7 +2,7 @@
 
 > “每一天都要留下新的记忆！嘿嘿，开拓者，快来和我合影吧～”
 
-这是一个基于 Python 开发的 Telegram 机器人，接入了 **Groq API** (Llama-3.3/Mixtral)。她不仅仅是一个 AI，还是那个活泼元气、爱吐槽、爱拍照的**三月七**！
+这是一个基于 Python 开发的 Telegram 机器人，可接入 **Groq、Gemini、Grok 或本地 Ollama**。她不仅仅是一个 AI，还是那个活泼元气、爱吐槽、爱拍照的**三月七**！
 
 ---
 
@@ -22,7 +22,7 @@
 | `/start` | 唤醒三月七，开始你们的冒险之旅！ |
 | `/help` | 召唤详细的图形化功能菜单。 |
 | `/ask` | 快捷提问。这种模式下本姑娘不会占用大脑记忆。 |
-| `/setkey` | **[重要]** 绑定你自己的 Groq Token (建议私聊发送)。 |
+| `/setkey` | **[重要]** 绑定自己的 Groq、Gemini 或 Grok Token（建议私聊发送）。 |
 | `/reset` | 格式化记忆。如果本姑娘坏掉了，用这个修理！ |
 | `/resetquota` | 如果你的api额度满了，可以用这个重置为使用公共额度。|
 | `/model` | 切换本姑娘的大脑模型 |
@@ -36,8 +36,8 @@
 如果你是第一次使用，请按照以下步骤操作：
 
 1. **寻找机器人**：开拓者，你可以使用最下面的连接，或者扫描二维码，或者在 Telegram 搜索 `@march7_ai_bot` 并点击 `Start`。
-2. **配置能源 (可选)**：为了让本姑娘更有精神，建议去 [Groq Cloud](https://console.groq.com/keys) 免费申请一个 API Key。
-3. **绑定 Key (可选)**：私聊机器人发送 `/setkey gsk_你的Key`。
+2. **配置模型**：配置任意一个云端 API Key，或启动本地 Ollama。
+3. **绑定 Key（可选）**：私聊机器人发送 `/setkey groq gsk_你的Key`。
 4. **开始聊天**：直接发消息，开始调戏她吧！
 
 
@@ -71,9 +71,12 @@ pip install -r requirements.txt
 | 变量名 | 获取渠道 | 说明 |
 | :--- | :--- | :--- |
 | `TELEGRAM_TOKEN` | [@BotFather](https://t.me/Botfather) | 机器人的身份令牌 |
-| `GROQ_API_KEY` | [Groq Console](https://console.groq.com/keys) | AI 大脑的能源 Key （稳定快速，推荐）|
-| `GEMINI_API_KEY` | [Google AI Studio ](https://aistudio.google.com/) | AI 大脑的能源 Key|
-| `DB_PATH` | march7_bot.db | 数据库位置 |
+| `GROQ_API_KEY` | [Groq Console](https://console.groq.com/keys) | Groq API Key |
+| `GEMINI_API_KEY` | [Google AI Studio ](https://aistudio.google.com/) | Gemini API Key |
+| `GROK_API_KEY` | [xAI Console](https://console.x.ai/) | Grok API Key |
+| `OLLAMA_BASE_URL` | `http://127.0.0.1:11434/v1` | Ollama 的 OpenAI 兼容地址 |
+| `OLLAMA_MODEL` | 未设置 | 可选：指定无云端 Key 时使用的默认本地模型；未设置时自动选择已安装模型 |
+| `DB_PATH` | `march7_bot.db` | SQLite 数据库位置；相对路径以项目根目录为基准 |
 
 
 ### 4. 运行程序

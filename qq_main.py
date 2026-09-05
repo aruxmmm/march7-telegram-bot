@@ -15,11 +15,12 @@ from config import (
     QQ_BOT_SECRET,
     DEFAULT_MODELS,
     MODEL_LIST,
+    refresh_ollama_models,
     user_api_provider,
     user_keys,
 )
 from core.llm import generate_reply
-from core.memory import clear_memory, update_memory
+from core.memory import clear_memory, get_memory, update_memory
 from core.state import get_state, update_state, user_model, user_state
 
 try:
@@ -170,6 +171,7 @@ def _build_help_text(user_id: int) -> str:
         "• /setkey [groq|gemini] [key] - 配置 API Key\n"
         "• /model [模型名] - 切换模型\n"
         "• /reset - 重置对话和状态\n\n"
+        "• /memory - 查看当前记忆\n"
         f"当前模型：{current_model}\n"
         f"当前 API：{current_api}\n"
         f"Key 状态：{key_status}\n"
@@ -231,15 +233,27 @@ def _handle_command(user_id: int, message_type: str, target_id: int, command: st
         _send_text(message_type, target_id, "(清空了相册) 呼...虽然有点舍不得，但我们要重新开始咯！")
         return
 
+    if command == "memory":
+        memory = get_memory(user_id)
+        if not memory or memory == "（这是本姑娘和你的新冒险！）":
+            _send_text(message_type, target_id, "我们还没有共同记忆呢，先聊几句吧～")
+        else:
+            _send_text(message_type, target_id, f"当前记忆：\n\n{memory[-3500:]}")
+        return
+
     if command == "model":
+        refresh_ollama_models()
         if len(args) < 1:
             groq_models = [k for k, v in MODEL_LIST.items() if v.get("api") == "groq"]
             gemini_models = [k for k, v in MODEL_LIST.items() if v.get("api") == "gemini"]
+            ollama_models = [k for k, v in MODEL_LIST.items() if v.get("api") == "ollama"]
             help_text = "本姑娘的脑子有这么几种啦～\n"
             if groq_models:
                 help_text += f"Groq: {', '.join(groq_models)}\n"
             if gemini_models:
                 help_text += f"Gemini: {', '.join(gemini_models)}\n"
+            if ollama_models:
+                help_text += f"Ollama: {', '.join(ollama_models)}\n"
             help_text += "用法：/model groq_fast 或 /model gemini_fast"
             _send_text(message_type, target_id, help_text)
             return

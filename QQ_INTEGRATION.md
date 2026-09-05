@@ -175,14 +175,11 @@
 |------|------|
 | `/start` | 启动机器人 |
 | `/help` | 查看帮助 |
-| `/aris 内容` | 开启多轮对话（计入记忆） |
 | `/ask 内容` | 单次快速问答（不计入记忆） |
 | `/reset` | 重置对话历史和状态 |
-| `/model 模型名` | 切换模型 |
+| `/model 模型名` | 选择模型；模型所属供应商会随之切换 |
 | `/setkey groq gsk_xxx` | 配置 Groq API Key |
 | `/setkey gemini AI_xxx` | 配置 Gemini API Key |
-| `/setapi groq` | 切换到 Groq 引擎 |
-| `/setapi gemini` | 切换到 Gemini 引擎 |
 
 ## 7. 常见问题
 
