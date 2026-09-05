@@ -6,6 +6,15 @@
 
 ---
 
+## 📸 扫码以开始使用，或者点击下方tg小按钮
+
+<img width="300" alt="march7_ai_bot_qrcode" src="https://github.com/user-attachments/assets/265ae68e-d3bc-4833-8556-746ffc6aac6d" />
+
+
+[![Telegram Bot](https://img.shields.io/badge/Telegram-Bot-blue?style=for-the-badge&logo=telegram)](https://t.me/march7_ai_bot)
+
+---
+
 ## ✨ 核心功能
 
 - **元气对话**：深度还原三月七的人设，说话自带（心理/动作描写）。
@@ -138,7 +147,6 @@ docker run -d --name march7-bot \
 
 ---
 
-## 📸 扫码以开始使用，或者点击下方tg小按钮
 
 <img width="300" alt="march7_ai_bot_qrcode" src="https://github.com/user-attachments/assets/265ae68e-d3bc-4833-8556-746ffc6aac6d" />
 
