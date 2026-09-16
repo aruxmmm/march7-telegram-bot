@@ -1,6 +1,6 @@
 import logging
 import os
-from telegram import BotCommand
+from telegram import BotCommand, BotCommandScopeAllGroupChats, BotCommandScopeAllPrivateChats, MenuButtonCommands
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, CallbackQueryHandler, filters
 from config import TELEGRAM_TOKEN, QQ_BOT_ENABLED
 from handlers.commands import start_cmd, ask_cmd, reset_cmd, memory_cmd, resetquota_cmd, model_cmd, model_callback, set_key, prompt_cmd
@@ -25,21 +25,24 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
+COMMANDS = [
+    BotCommand("start", "启动本姑娘"),
+    BotCommand("help", "查看帮助手册"),
+    BotCommand("ask", "单次快捷提问"),
+    BotCommand("reset", "重置记忆和状态"),
+    BotCommand("memory", "查看当前记忆"),
+    BotCommand("resetquota", "重置为公共额度"),
+    BotCommand("model", "切换大脑模型"),
+    BotCommand("prompt", "切换/查看/预览角色 prompt"),
+    BotCommand("setkey", "配置 API Token"),
+    BotCommand("stats", "查看统计数据"),
+]
+
 async def post_init(application):
-    commands = [
-        BotCommand("start", "启动本姑娘"),
-        BotCommand("help", "查看帮助手册"),
-        BotCommand("ask", "单次快捷提问"),
-        BotCommand("reset", "重置记忆和状态"),
-        BotCommand("memory", "查看当前记忆"),
-        BotCommand("resetquota", "重置为公共额度"),
-        BotCommand("model", "切换大脑模型"),
-        BotCommand("prompt", "切换/查看/预览角色 prompt"),
-        BotCommand("setkey", "配置 API Token"),
-        BotCommand("stats", "查看统计数据")
-        
-    ]
-    await application.bot.set_my_commands(commands)
+    await application.bot.set_my_commands(COMMANDS)
+    await application.bot.set_my_commands(COMMANDS, scope=BotCommandScopeAllPrivateChats())
+    await application.bot.set_my_commands(COMMANDS, scope=BotCommandScopeAllGroupChats())
+    await application.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
 
 def main():
     app = None
