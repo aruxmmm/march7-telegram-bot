@@ -8,7 +8,8 @@
 
 ## 📸 扫码以开始使用，或者点击下方tg小按钮
 
-<img width="300" alt="march7_ai_bot_qrcode" src="https://github.com/user-attachments/assets/265ae68e-d3bc-4833-8556-746ffc6aac6d" />
+<img width="591" height="1280" alt="photo_2026-10-04 20 46 40" src="https://github.com/user-attachments/assets/dc66bdc1-e8c8-493c-b37f-6462a426ef7f" />
+
 
 
 [![Telegram Bot](https://img.shields.io/badge/Telegram-Bot-blue?style=for-the-badge&logo=telegram)](https://t.me/march7_ai_bot)
@@ -54,9 +55,10 @@
 
 
 <img width="579" height="760" alt="屏幕截图 2026-04-05 170816" src="https://github.com/user-attachments/assets/240c01b0-cd30-48db-b298-597761b25392" />
-v0.1版本图
+
 <img width="765" height="827" alt="image" src="https://github.com/user-attachments/assets/041ce035-c3a5-4fb0-aef9-8897b11d015c" />
-v0.2版本图
+
+<img width="1069" height="654" alt="image" src="https://github.com/user-attachments/assets/982d1d72-1242-4bc5-b0c6-6dd4440b64aa" />
 
 
 ---
@@ -149,7 +151,6 @@ docker run -d --name march7-bot \
 ---
 
 
-<img width="300" alt="march7_ai_bot_qrcode" src="https://github.com/user-attachments/assets/265ae68e-d3bc-4833-8556-746ffc6aac6d" />
 
 > **三月七的碎碎念**：
 > “喂，那个叫 GitHub 的地方，记得给本姑娘点个 **Star** 哦！不然下次合照我就把你拍糊掉！” 📸
