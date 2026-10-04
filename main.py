@@ -64,7 +64,8 @@ def main():
         app.add_handler(CommandHandler("stats", stats_cmd))
 
         # 普通聊天 Handler
-        app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_normal_chat))
+        chat_filters = (filters.TEXT & (~filters.COMMAND)) | filters.PHOTO | filters.Document.IMAGE | filters.Sticker.ALL
+        app.add_handler(MessageHandler(chat_filters, handle_normal_chat))
 
     elif TELEGRAM_TOKEN:
         logger.warning("TELEGRAM_TOKEN 存在但格式异常，Telegram Bot 未启动。")

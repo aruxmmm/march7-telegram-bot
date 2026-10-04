@@ -14,6 +14,7 @@ from config import (
     DEFAULT_MODELS,
     user_keys
 )
+import base64
 import importlib
 from core.state import get_prompt_name
 
@@ -94,7 +95,7 @@ def get_client(provider, api_key):
 # =========================
 # ✨ 主函数
 # =========================
-def generate_reply(user_input, user_id, use_memory=True):
+def generate_reply(user_input, user_id, use_memory=True, image_data=None, image_mime_type="image/jpeg"):
     # ===== 1. 状态 & 记忆 =====
     state = get_state(user_id)
     memory = get_memory(user_id) if use_memory else "（单次提问模式）"
@@ -127,6 +128,15 @@ def generate_reply(user_input, user_id, use_memory=True):
             system_prompt = prompt_mod.get_prompt(state, memory, "")
         except Exception as e:
             raise e
+    if image_data:
+        system_prompt += (
+            "\n\n【图片回复】请遵循当前角色设定的性格和说话方式来观察、描述图片，"
+            "不要切换成通用的客观解说口吻。用户只发图片或只让你描述图片时，"
+            "不要用‘画面中’‘图中是’‘这张照片里’等说法开头或充当句子主语，"
+            "直接从具体的人、物、动作或你的即时反应说起，再自然接上一句符合角色性格的评价、反应或好奇；"
+            "可以针对具体细节提问，但不要每次都问，也不要只像图像识别报告一样罗列物体。"
+            "不要编造图片里看不出的信息；用户附带了问题时，优先回答问题，不要硬加闲聊。"
+        )
     user_prompt = user_input
 
     # ===== 4. 调用 =====
@@ -136,7 +146,9 @@ def generate_reply(user_input, user_id, use_memory=True):
             model_name,
             user_id,
             system_prompt,
-            user_prompt
+            user_prompt,
+            image_data,
+            image_mime_type,
         )
 
     except Exception as e:
@@ -148,7 +160,9 @@ def generate_reply(user_input, user_id, use_memory=True):
                     MODEL_LIST["groq_fast"]["model"],
                     user_id,
                     system_prompt,
-                    user_prompt
+                    user_prompt,
+                    image_data,
+                    image_mime_type,
                 )
             except:
                 pass
@@ -159,24 +173,41 @@ def generate_reply(user_input, user_id, use_memory=True):
 # =========================
 # 🤖 调用模型
 # =========================
-def call_model(provider, model_name, user_id, system_prompt, user_prompt):
+def call_model(provider, model_name, user_id, system_prompt, user_prompt, image_data=None, image_mime_type="image/jpeg"):
     api_key = get_api_key(user_id, provider)
     client = get_client(provider, api_key)
 
     # ===== Gemini =====
     if provider == "gemini":
+        contents = system_prompt + "\n\n" + user_prompt
+        if image_data:
+            from google.genai import types
+            contents = [
+                contents,
+                types.Part.from_bytes(data=image_data, mime_type=image_mime_type),
+            ]
         response = client.models.generate_content(
             model=model_name,
-            contents=system_prompt + "\n\n" + user_prompt
+            contents=contents
         )
         return response.text
 
-    # ===== OpenAI协议（Groq / Grok）=====
+    # ===== OpenAI 兼容协议 =====
+    user_content = user_prompt
+    if image_data:
+        encoded_image = base64.b64encode(image_data).decode("ascii")
+        user_content = [
+            {"type": "text", "text": user_prompt},
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:{image_mime_type};base64,{encoded_image}"},
+            },
+        ]
     response = client.chat.completions.create(
         model=model_name,
         messages=[
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
+            {"role": "user", "content": user_content}
         ],
         temperature=0.8
     )
