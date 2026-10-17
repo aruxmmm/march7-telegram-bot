@@ -1,8 +1,83 @@
 import os
-import sqlite3
-import json
-from datetime import datetime
+import re
+import sqlite3 as _sqlite3
+from datetime import datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
+
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+USING_POSTGRES = DATABASE_URL.startswith(("postgres://", "postgresql://"))
+
+if USING_POSTGRES:
+    import psycopg
+    from psycopg.rows import dict_row
+
+
+class _PostgresCursor:
+    """适配现有 SQLite 查询，使同一数据层可运行在 PostgreSQL 上。"""
+
+    _PRIMARY_KEYS = {
+        "user_api_keys": "user_id",
+        "user_api_provider": "user_id",
+        "user_state": "user_id",
+        "user_model": "user_id",
+        "user_prompt": "user_id",
+        "user_memory_prompt": "user_id, prompt_name",
+    }
+
+    def __init__(self, cursor):
+        self._cursor = cursor
+
+    def execute(self, sql, params=()):
+        sql = sql.replace("?", "%s")
+        match = re.search(r"INSERT\s+OR\s+REPLACE\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES", sql, re.I)
+        if match:
+            table, columns = match.groups()
+            column_names = [column.strip() for column in columns.split(",")]
+            primary_key = self._PRIMARY_KEYS[table]
+            updates = ", ".join(
+                f"{column} = EXCLUDED.{column}"
+                for column in column_names
+                if column not in {part.strip() for part in primary_key.split(",")}
+            )
+            sql = re.sub(r"INSERT\s+OR\s+REPLACE", "INSERT", sql, count=1, flags=re.I)
+            sql += f" ON CONFLICT ({primary_key}) DO UPDATE SET {updates}"
+        return self._cursor.execute(sql, params)
+
+    def __getattr__(self, name):
+        return getattr(self._cursor, name)
+
+
+class _PostgresConnection:
+    def __init__(self):
+        self._connection = psycopg.connect(DATABASE_URL, row_factory=dict_row)
+        self.row_factory = None  # 与 sqlite3.Connection 的调用方式兼容
+
+    def cursor(self):
+        return _PostgresCursor(self._connection.cursor())
+
+    def commit(self):
+        return self._connection.commit()
+
+    def close(self):
+        return self._connection.close()
+
+
+_sqlite_connect = _sqlite3.connect
+
+
+def _connect(*args, **kwargs):
+    if USING_POSTGRES:
+        return _PostgresConnection()
+    return _sqlite_connect(*args, **kwargs)
+
+
+# 该模块的既有函数全部经由 sqlite3.connect 创建连接；仅在本模块中重定向。
+sqlite3 = SimpleNamespace(
+    connect=_connect,
+    OperationalError=_sqlite3.OperationalError,
+    Row=_sqlite3.Row,
+)
 
 # 数据库文件路径
 # DB_PATH 允许部署环境把数据库放在持久化卷；相对路径仍以项目根目录为基准。
@@ -17,7 +92,7 @@ def init_db():
     # 用户 API Key 表
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_api_keys (
-            user_id INTEGER PRIMARY KEY,
+            user_id BIGINT PRIMARY KEY,
             groq_key TEXT,
             gemini_key TEXT,
             grok_key TEXT,
@@ -28,19 +103,20 @@ def init_db():
     """)
     
     # 数据库迁移：添加 grok_key 列（如果不存在）
-    try:
-        cursor.execute("ALTER TABLE user_api_keys ADD COLUMN grok_key TEXT")
-    except sqlite3.OperationalError:
-        pass  # 列已存在，忽略错误
-    try:
-        cursor.execute("ALTER TABLE user_api_keys ADD COLUMN agnes_key TEXT")
-    except sqlite3.OperationalError:
-        pass  # 列已存在，忽略错误
+    if not USING_POSTGRES:
+        try:
+            cursor.execute("ALTER TABLE user_api_keys ADD COLUMN grok_key TEXT")
+        except sqlite3.OperationalError:
+            pass  # 列已存在，忽略错误
+        try:
+            cursor.execute("ALTER TABLE user_api_keys ADD COLUMN agnes_key TEXT")
+        except sqlite3.OperationalError:
+            pass  # 列已存在，忽略错误
 
         # 用户使用记录表（用于统计总使用人数）
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY,
+            user_id BIGINT PRIMARY KEY,
             username TEXT,
             first_name TEXT,
             last_interaction TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -52,7 +128,7 @@ def init_db():
     # 用户 API 提供商选择表
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_api_provider (
-            user_id INTEGER PRIMARY KEY,
+            user_id BIGINT PRIMARY KEY,
             provider TEXT DEFAULT 'groq',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -62,7 +138,7 @@ def init_db():
     # 用户状态表
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_state (
-            user_id INTEGER PRIMARY KEY,
+            user_id BIGINT PRIMARY KEY,
             affinity INTEGER DEFAULT 0,
             emotion TEXT DEFAULT '开心',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -73,7 +149,7 @@ def init_db():
     # 用户模型选择表
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_model (
-            user_id INTEGER PRIMARY KEY,
+            user_id BIGINT PRIMARY KEY,
             model TEXT DEFAULT 'fast',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -83,7 +159,7 @@ def init_db():
     # 用户对话记忆表（按 prompt 划分）
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_memory_prompt (
-            user_id INTEGER,
+            user_id BIGINT,
             prompt_name TEXT DEFAULT 'march7',
             memory_text TEXT DEFAULT '',
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -94,7 +170,7 @@ def init_db():
     # 用户 Prompt 选择表（用于多 prompt 切换）
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_prompt (
-            user_id INTEGER PRIMARY KEY,
+            user_id BIGINT PRIMARY KEY,
             prompt_name TEXT DEFAULT 'march7',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -339,7 +415,8 @@ def append_user_memory_prompt(user_id, text, prompt_name='march7'):
     # 获取现有记忆（针对指定 prompt）
     cursor.execute("SELECT memory_text FROM user_memory_prompt WHERE user_id = ? AND prompt_name = ?", (user_id, prompt_name))
     row = cursor.fetchone()
-    current_memory = row[0] if row and row[0] else ""
+    current_memory = (row["memory_text"] if USING_POSTGRES else row[0]) if row else ""
+    current_memory = current_memory or ""
 
     lines = current_memory.split('\n') if current_memory else []
     lines = lines[-6:]
@@ -373,7 +450,8 @@ def clear_user_memory_prompt(user_id, prompt_name=None):
         rows = cursor.fetchall()
         if rows:
             for r in rows:
-                pn = r[0] if r and r[0] else 'march7'
+                pn = (r["prompt_name"] if USING_POSTGRES else r[0]) if r else 'march7'
+                pn = pn or 'march7'
                 cursor.execute("""
                     INSERT OR REPLACE INTO user_memory_prompt (user_id, memory_text, prompt_name, updated_at)
                     VALUES (?, ?, ?, ?)
@@ -404,7 +482,7 @@ def load_all_users_from_db():
         )
     """)
     
-    user_ids = [row[0] for row in cursor.fetchall()]
+    user_ids = [row["user_id"] if USING_POSTGRES else row[0] for row in cursor.fetchall()]
     conn.close()
     
     return user_ids
@@ -472,8 +550,9 @@ def get_total_users() -> int:
     """获取总使用人数（唯一用户数）"""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM users")
-    count = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) AS count FROM users")
+    row = cursor.fetchone()
+    count = row["count"] if USING_POSTGRES else row[0]
     conn.close()
     return count
 
@@ -482,10 +561,11 @@ def get_active_users(days: int = 30) -> int:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT COUNT(*) FROM users 
-        WHERE last_interaction >= datetime('now', ?)
-    """, (f'-{days} days',))
-    count = cursor.fetchone()[0]
+        SELECT COUNT(*) AS count FROM users
+        WHERE last_interaction >= ?
+    """, (datetime.now() - timedelta(days=days),))
+    row = cursor.fetchone()
+    count = row["count"] if USING_POSTGRES else row[0]
     conn.close()
     return count
 
