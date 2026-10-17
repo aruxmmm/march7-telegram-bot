@@ -93,6 +93,9 @@ pip install -r requirements.txt
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434/v1` | Ollama 的 OpenAI 兼容地址 |
 | `OLLAMA_MODEL` | 未设置 | 可选：指定一个额外的本地模型；未设置时自动读取 Ollama 已安装的全部模型 |
 | `DB_PATH` | `march7_bot.db` | SQLite 数据库位置；相对路径以项目根目录为基准 |
+| `DATABASE_URL` | 未设置 | PostgreSQL 连接地址。设置后优先使用它保存记忆、模型和用户设置，适合 Render 等会重建本地文件的部署平台 |
+
+部署在 Render 时，本地 SQLite 文件会随重新部署消失。建议创建一个 Supabase PostgreSQL 项目，把其连接地址填入 Render 的 `DATABASE_URL`；机器人下次重启后会自动建表。没有设置 `DATABASE_URL` 时，机器人仍会继续使用 `DB_PATH` 指定的 SQLite 文件。
 
 Ollama 模型会在启动时以及执行 `/model` 时自动刷新。安装或删除模型无需修改源代码：
 ```bash
