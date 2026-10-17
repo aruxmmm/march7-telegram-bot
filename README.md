@@ -91,9 +91,9 @@ pip install -r requirements.txt
 | `GEMINI_API_KEY` | [Google AI Studio ](https://aistudio.google.com/) | Gemini API Key |
 | `GROK_API_KEY` | [xAI Console](https://console.x.ai/) | Grok API Key |
 | `OLLAMA_BASE_URL` | `http://127.0.0.1:11434/v1` | Ollama 的 OpenAI 兼容地址 |
-| `OLLAMA_MODEL` | 未设置 | 可选：指定一个额外的本地模型；未设置时自动读取 Ollama 已安装的全部模型 |
+| `OLLAMA_MODEL` |  [ollma](https://ollama.com/) | 可选：指定一个额外的本地模型；未设置时自动读取 Ollama 已安装的全部模型 |
 | `DB_PATH` | `march7_bot.db` | SQLite 数据库位置；相对路径以项目根目录为基准 |
-| `DATABASE_URL` | 未设置 | PostgreSQL 连接地址。设置后优先使用它保存记忆、模型和用户设置，适合 Render 等会重建本地文件的部署平台 |
+| `DATABASE_URL` | [supabase](https://supabase.com/) | PostgreSQL 连接地址。设置后优先使用它保存记忆、模型和用户设置，适合 Render 等会重建本地文件的部署平台 |
 
 部署在 Render 时，本地 SQLite 文件会随重新部署消失。建议创建一个 Supabase PostgreSQL 项目，把其连接地址填入 Render 的 `DATABASE_URL`；机器人下次重启后会自动建表。没有设置 `DATABASE_URL` 时，机器人仍会继续使用 `DB_PATH` 指定的 SQLite 文件。
 
@@ -149,6 +149,7 @@ docker run -d --name march7-bot \
 - **V0.2.0**: 2026/6/27 添加了角色切换功能，新添了长夜月，黑化强三倍，去试试新的prompt吧。
 - **V0.2.1**: 2026/9/5 添加了免费且不用魔法的Agnes-api（杨教授，我们喜欢你），并作为默认模型，添加了调用ollma的选项。
 - **V0.2.2**: 2026/10/4 可以发送图片了，表情包也行。
+- **V0.2.3**：2026/10/18 迁移了数据库。
 - *更多功能正在开发中。...* 📷
 
 ---
