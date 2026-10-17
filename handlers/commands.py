@@ -4,6 +4,7 @@ import prompt
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
 from telegram.constants import ParseMode, ChatAction
 from telegram.ext import ContextTypes
+from telegram.error import BadRequest
 from core.state import get_state, user_model, user_state, get_prompt_name, set_prompt_name
 from core.memory import memory_db
 from core.memory import get_memory
@@ -356,7 +357,14 @@ async def model_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     data = query.data or ""
-    await query.answer()
+    try:
+        await query.answer()
+    except BadRequest as exc:
+        if "query is too old" not in str(exc).lower():
+            raise
+        if query.message:
+            await query.message.reply_text("这个菜单已经过期啦，请重新发送 /model 或 /prompt。")
+        return
 
     if data == "model_cancel":
         await query.edit_message_text("「已取消模型切换，保持当前设置不变喽～」")
@@ -434,4 +442,3 @@ async def model_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     await query.edit_message_text("「我听不懂这个按钮呐，重新 /model 试试吧～」")
-
