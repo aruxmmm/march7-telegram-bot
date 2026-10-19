@@ -132,11 +132,11 @@ async def reset_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 默认行为：重置记忆和状态
     if user_id in memory_db:
         memory_db[user_id] = ""
-    user_state[user_id] = {"affinity": 0, "emotion": "开心"}
+    user_state[user_id] = {"affinity": 80, "emotion": "开心"}
     if DB_AVAILABLE:
         from core.database import clear_user_memory, update_user_state
         clear_memory(user_id)
-        update_user_state(user_id, 0, "开心")
+        update_user_state(user_id, 80, "开心")
     await update.message.reply_text("(清空了相册) 「呼...虽然有点舍不得，但我们要重新开始咯！」")
 
 
@@ -245,7 +245,7 @@ async def prompt_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         try:
             mod = __import__(f"prompt.{target}", fromlist=["get_prompt"]) if target else None
-            sample = mod.get_prompt({"affinity": 0, "emotion": "开心"}, "（这是本姑娘和你的新冒险！）", "你好") if mod else ""
+            sample = mod.get_prompt({"affinity": 80, "emotion": "开心"}, "（这是本姑娘和你的新冒险！）", "你好") if mod else ""
         except Exception:
             sample = "示例不可用。"
 
@@ -418,7 +418,7 @@ async def model_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         target = get_prompt_name(query.from_user.id)
         try:
             mod = __import__(f"prompt.{target}", fromlist=["get_prompt"]) if target else None
-            sample = mod.get_prompt({"affinity": 0, "emotion": "开心"}, "（这是本姑娘和你的新冒险！）", "你好") if mod else ""
+            sample = mod.get_prompt({"affinity": 80, "emotion": "开心"}, "（这是本姑娘和你的新冒险！）", "你好") if mod else ""
         except Exception:
             sample = "示例不可用。"
 
