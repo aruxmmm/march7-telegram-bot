@@ -42,21 +42,23 @@ def get_state(user_id):
         return user_state[user_id]
 
 def update_state(user_id, text):
-    """更新用户状态"""
+    """保留旧接口；状态变化由模型回复末尾的标记决定。"""
+    return get_state(user_id)
+
+
+def apply_model_state_update(user_id, affinity_delta, emotion):
+    """验证模型建议的状态变化，再持久化保存。"""
+    if not isinstance(affinity_delta, int) or not -10 <= affinity_delta <= 10:
+        return get_state(user_id)
+
     state = get_state(user_id)
-    
-    if any(word in text for word in ["谢谢", "喜欢", "厉害"]):
-        state["affinity"] += 1
-    elif any(word in text for word in ["烦", "累", "伤心"]):
-        state["emotion"] = "关心"
-    else:
-        state["emotion"] = "元气"
-    
-    # 保存到数据库
+    state["affinity"] = max(0, min(200, state["affinity"] + affinity_delta))
+    emotion = str(emotion).strip()[:20]
+    if emotion:
+        state["emotion"] = emotion
+
     try:
         db_update_user_state(user_id, state["affinity"], state["emotion"])
     except:
-        # 降级到内存存储
         user_state[user_id] = state
-    
     return state
