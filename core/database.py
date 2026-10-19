@@ -540,7 +540,7 @@ def track_user_interaction(update):
             username = excluded.username,
             first_name = excluded.first_name,
             last_interaction = CURRENT_TIMESTAMP,
-            total_interactions = total_interactions + 1
+            total_interactions = users.total_interactions + 1
     """, (user_id, username, first_name))
     
     conn.commit()
