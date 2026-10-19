@@ -139,7 +139,7 @@ def init_db():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_state (
             user_id BIGINT PRIMARY KEY,
-            affinity INTEGER DEFAULT 0,
+            affinity INTEGER DEFAULT 80,
             emotion TEXT DEFAULT '开心',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -176,6 +176,8 @@ def init_db():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    # 将旧版本未初始化的好感度迁移到新的默认值；已累积的数值保持不变。
+    cursor.execute("UPDATE user_state SET affinity = 80 WHERE affinity = 0")
     conn.commit()
     conn.close()
     print(f"✓ 数据库初始化成功: {DB_PATH}")
@@ -317,7 +319,7 @@ def get_user_state(user_id):
     
     if row:
         return {"affinity": row['affinity'], "emotion": row['emotion']}
-    return {"affinity": 0, "emotion": "开心"}
+    return {"affinity": 80, "emotion": "开心"}
 
 def update_user_state(user_id, affinity=None, emotion=None):
     """更新用户状态"""
