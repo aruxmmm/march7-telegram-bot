@@ -38,7 +38,7 @@ def get_state(user_id):
     except:
         # 降级到内存存储
         if user_id not in user_state:
-            user_state[user_id] = {"affinity": 0, "emotion": "开心"}
+            user_state[user_id] = {"affinity": 80, "emotion": "开心"}
         return user_state[user_id]
 
 def update_state(user_id, text):
