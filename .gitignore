@@ -109,8 +109,3 @@ dmypy.json
 
 # Database
 *.db
-
-# QQ Bot
-qq_bot/config.yml
-qq_bot/device.json
-qq_bot/session.token

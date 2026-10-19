@@ -141,7 +141,7 @@ docker run -d --name march7-bot \
 
 ## 📅 更新日志
 - **V0.1.0**: 2026/4/5 基础对话逻辑、好感度系统及上下文记忆功能上线。
-- **V0.1.1**: 2026/4/6 将代码功能模块化拆分，增加了接入gemini-api的功能，修改了部分prompt，qqBOT功能测试中，小三月变得更聪明了。
+- **V0.1.1**: 2026/4/6 将代码功能模块化拆分，增加了接入gemini-api的功能，修改了部分prompt，小三月变得更聪明了。
 - **V0.1.2**: 2026/4/8 修复了gemini旧版不兼容的问题，完成了v0.2中的数据库设计，小三月变得更聪明了。
 - **V0.1.3**: 2026/4/21 增加了Grok-api，修改了部分代码结构，<del>不可以瑟瑟</del>。
 - **V0.1.4**: 2026/4/28 更新了模型列表，修改了部分界面，铲除冗余代码-ing。
@@ -160,4 +160,3 @@ docker run -d --name march7-bot \
 > “喂，那个叫 GitHub 的地方，记得给本姑娘点个 **Star** 哦！不然下次合照我就把你拍糊掉！” 📸
 
 [![Telegram Bot](https://img.shields.io/badge/Telegram-Bot-blue?style=for-the-badge&logo=telegram)](https://t.me/march7_ai_bot)
-

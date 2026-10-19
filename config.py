@@ -18,22 +18,12 @@ OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434/v1").rstr
 OLLAMA_API_KEY = os.getenv("OLLAMA_API_KEY", "ollama")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "").strip()
 
-# QQ Bot 配置
-QQ_BOT_ENABLED = os.getenv("QQ_BOT_ENABLED", "").strip().lower() in ("1", "true", "yes", "on")
-QQ_BOT_API_URL = os.getenv("QQ_BOT_API_URL", "")
-QQ_BOT_SECRET = os.getenv("QQ_BOT_SECRET", "")
-QQ_BOT_PORT = int(os.getenv("QQ_BOT_PORT", "8080"))
-
 # 调试检查
-if not TELEGRAM_TOKEN and not QQ_BOT_ENABLED:
-    raise ValueError("错误：未检测到 TELEGRAM_TOKEN，且 QQ Bot 未启用。请检查 .env 配置。")
-if QQ_BOT_ENABLED and not QQ_BOT_API_URL:
-    raise ValueError("错误：已启用 QQ Bot，但未配置 QQ_BOT_API_URL。请检查 .env 配置。")
+if not TELEGRAM_TOKEN:
+    raise ValueError("错误：未检测到 TELEGRAM_TOKEN。请检查 .env 配置。")
 
 if TELEGRAM_TOKEN:
     print(f"Telegram Token 已加载，长度为: {len(TELEGRAM_TOKEN)}")
-if QQ_BOT_ENABLED:
-    print(f"QQ Bot 已启用，OneBot API URL: {QQ_BOT_API_URL}, 监听端口: {QQ_BOT_PORT}")
 
 # 模型配置（按 API 分组）
 MODEL_LIST = {

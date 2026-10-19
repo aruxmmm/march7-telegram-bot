@@ -22,7 +22,7 @@ RUN mkdir -p /app/data
 # 设置环境变量（可选，可以通过 docker run -e 覆盖）
 ENV PYTHONUNBUFFERED=1
 
-# 暴露端口（如果 QQ Bot 启用，可能需要）
+# 暴露 Telegram webhook 端口
 EXPOSE 8080
 
 # 运行应用

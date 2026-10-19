@@ -2,14 +2,11 @@ import logging
 import os
 from telegram import BotCommand, BotCommandScopeAllGroupChats, BotCommandScopeAllPrivateChats, MenuButtonCommands
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, CallbackQueryHandler, filters
-from config import TELEGRAM_TOKEN, QQ_BOT_ENABLED
+from config import TELEGRAM_TOKEN
 from handlers.commands import start_cmd, ask_cmd, reset_cmd, memory_cmd, resetquota_cmd, model_cmd, model_callback, set_key, prompt_cmd
 from handlers.help import help_cmd
 from handlers.chat import handle_normal_chat
 from handlers.stats import stats_cmd
-
-if QQ_BOT_ENABLED:
-    from qq_main import start_qq_bot
 
 # 启动时初始化数据库和加载数据
 try:
@@ -45,59 +42,42 @@ async def post_init(application):
     await application.bot.set_chat_menu_button(menu_button=MenuButtonCommands())
 
 def main():
-    app = None
+    if ":" not in TELEGRAM_TOKEN:
+        logger.warning("TELEGRAM_TOKEN 格式异常，Telegram Bot 未启动。")
+        return
 
-    if TELEGRAM_TOKEN and ":" in TELEGRAM_TOKEN:
-        app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).post_init(post_init).build()
 
-        # 指令 Handler (必须在 MessageHandler 之前)
-        app.add_handler(CommandHandler("start", start_cmd))
-        app.add_handler(CommandHandler("help", help_cmd))
-        app.add_handler(CommandHandler("ask", ask_cmd))
-        app.add_handler(CommandHandler("reset", reset_cmd))
-        app.add_handler(CommandHandler("memory", memory_cmd))
-        app.add_handler(CommandHandler("resetquota", resetquota_cmd))
-        app.add_handler(CommandHandler("model", model_cmd))
-        app.add_handler(CommandHandler("prompt", prompt_cmd))
-        app.add_handler(CallbackQueryHandler(model_callback, pattern=r"^(?:model_select:|model_api:|model_cancel|model_back|prompt_cancel|prompt_show|prompt_select:)") )
-        app.add_handler(CommandHandler("setkey", set_key))
-        app.add_handler(CommandHandler("stats", stats_cmd))
+    # 指令 Handler (必须在 MessageHandler 之前)
+    app.add_handler(CommandHandler("start", start_cmd))
+    app.add_handler(CommandHandler("help", help_cmd))
+    app.add_handler(CommandHandler("ask", ask_cmd))
+    app.add_handler(CommandHandler("reset", reset_cmd))
+    app.add_handler(CommandHandler("memory", memory_cmd))
+    app.add_handler(CommandHandler("resetquota", resetquota_cmd))
+    app.add_handler(CommandHandler("model", model_cmd))
+    app.add_handler(CommandHandler("prompt", prompt_cmd))
+    app.add_handler(CallbackQueryHandler(model_callback, pattern=r"^(?:model_select:|model_api:|model_cancel|model_back|prompt_cancel|prompt_show|prompt_select:)") )
+    app.add_handler(CommandHandler("setkey", set_key))
+    app.add_handler(CommandHandler("stats", stats_cmd))
 
-        # 普通聊天 Handler
-        chat_filters = (filters.TEXT & (~filters.COMMAND)) | filters.PHOTO | filters.Document.IMAGE | filters.Sticker.ALL
-        app.add_handler(MessageHandler(chat_filters, handle_normal_chat))
+    # 普通聊天 Handler
+    chat_filters = (filters.TEXT & (~filters.COMMAND)) | filters.PHOTO | filters.Document.IMAGE | filters.Sticker.ALL
+    app.add_handler(MessageHandler(chat_filters, handle_normal_chat))
 
-    elif TELEGRAM_TOKEN:
-        logger.warning("TELEGRAM_TOKEN 存在但格式异常，Telegram Bot 未启动。")
-
-    if QQ_BOT_ENABLED:
-        start_qq_bot(block=False)
-        print("QQ Bot 已就绪，正在监听 OneBot 事件。")
-
-    if app:
-        print("三月七 Bot 已就位，拍照模式开启！📷")
-        webhook_url = os.environ.get("WEBHOOK_URL", "").rstrip("/")
-        port = int(os.environ.get("PORT", 8080))
-        if webhook_url:
-            app.run_webhook(
-                listen="0.0.0.0",
-                port=port,
-                webhook_url=f"{webhook_url}/{TELEGRAM_TOKEN}",
-                url_path=TELEGRAM_TOKEN,
-            )
-        else:
-            # 本地开发没有设置 WEBHOOK_URL 时回退到 polling
-            app.run_polling()
-    elif QQ_BOT_ENABLED:
-        print("仅 QQ Bot 已启动，请保持程序运行。按 Ctrl+C 退出。")
-        try:
-            import time
-            while True:
-                time.sleep(3600)
-        except KeyboardInterrupt:
-            print("QQ Bot 停止。")
+    print("三月七 Bot 已就位，拍照模式开启！📷")
+    webhook_url = os.environ.get("WEBHOOK_URL", "").rstrip("/")
+    port = int(os.environ.get("PORT", 8080))
+    if webhook_url:
+        app.run_webhook(
+            listen="0.0.0.0",
+            port=port,
+            webhook_url=f"{webhook_url}/{TELEGRAM_TOKEN}",
+            url_path=TELEGRAM_TOKEN,
+        )
     else:
-        logger.error("没有可用的 Bot 入口，程序退出。")
+        # 本地开发没有设置 WEBHOOK_URL 时回退到 polling
+        app.run_polling()
 
 if __name__ == '__main__':
     main()
