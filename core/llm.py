@@ -1,6 +1,6 @@
 from openai import OpenAI
 from google import genai
-from core.state import user_model, get_state
+from core.state import user_model, get_state, apply_model_state_update
 from core.memory import get_memory
 from config import (
     GROQ_API_KEY,
@@ -16,7 +16,30 @@ from config import (
 )
 import base64
 import importlib
+import re
 from core.state import get_prompt_name
+
+_STATE_MARKER = re.compile(
+    r"\s*\[\[\s*affinity\s*:\s*([+-]\d+)\s*;\s*emotion\s*:\s*([^\]\r\n;]{1,20})\s*\]\]\s*$"
+)
+
+
+def finalize_reply(reply_text, user_id):
+    """移除模型的状态标记，并在通过校验后写入用户状态。"""
+    if not isinstance(reply_text, str):
+        return reply_text
+
+    match = _STATE_MARKER.search(reply_text)
+    if not match:
+        return reply_text
+
+    affinity_delta = int(match.group(1))
+    if not -10 <= affinity_delta <= 10:
+        return reply_text
+
+    apply_model_state_update(user_id, affinity_delta, match.group(2))
+    return reply_text[:match.start()].rstrip()
+
 
 # 数据库支持（可选）
 try:
@@ -141,7 +164,7 @@ def generate_reply(user_input, user_id, use_memory=True, image_data=None, image_
 
     # ===== 4. 调用 =====
     try:
-        return call_model(
+        reply_text = call_model(
             provider,
             model_name,
             user_id,
@@ -150,12 +173,13 @@ def generate_reply(user_input, user_id, use_memory=True, image_data=None, image_
             image_data,
             image_mime_type,
         )
+        return finalize_reply(reply_text, user_id)
 
     except Exception as e:
         # ===== fallback =====
         if provider != "groq":
             try:
-                return call_model(
+                reply_text = call_model(
                     "groq",
                     MODEL_LIST["groq_fast"]["model"],
                     user_id,
@@ -164,6 +188,7 @@ def generate_reply(user_input, user_id, use_memory=True, image_data=None, image_
                     image_data,
                     image_mime_type,
                 )
+                return finalize_reply(reply_text, user_id)
             except:
                 pass
 
