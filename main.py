@@ -2,8 +2,9 @@ import asyncio
 import logging
 import os
 from telegram import BotCommand, BotCommandScopeAllGroupChats, BotCommandScopeAllPrivateChats, MenuButtonCommands, Update
-from telegram.error import TelegramError
+from telegram.error import NetworkError, TelegramError
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, CallbackQueryHandler, TypeHandler, filters
+from telegram.request import HTTPXRequest
 from config import TELEGRAM_TOKEN
 from handlers.commands import start_cmd, ask_cmd, reset_cmd, memory_cmd, state_cmd, resetquota_cmd, model_cmd, model_callback, set_key, prompt_cmd
 from handlers.help import help_cmd
@@ -40,6 +41,16 @@ COMMANDS = [
 ]
 
 async def post_init(application):
+    # 启动连接自检：第一时间明确网络路径是否可用，避免静默失联
+    try:
+        me = await application.bot.get_me()
+        logger.info("Telegram 连接自检通过: @%s", me.username)
+    except TelegramError:
+        proxy = os.environ.get("TELEGRAM_PROXY", "").strip()
+        if proxy:
+            logger.exception("无法连接 Telegram（代理 %s）。请检查代理是否运行且可用", proxy)
+        else:
+            logger.exception("无法连接 Telegram（直连路径，未设置 TELEGRAM_PROXY）。请检查网络（如 WARP），或设置 TELEGRAM_PROXY（例如 http://127.0.0.1:7890）走代理")
     try:
         await _sync_bot_commands(application)
     except TelegramError:
@@ -57,11 +68,15 @@ async def log_incoming_update(update, _context):
 
 async def log_update_error(update, context):
     error = context.error
-    logger.error(
-        "Unhandled error while processing Telegram update id=%s",
-        update.update_id if update else None,
-        exc_info=(type(error), error, error.__traceback__) if error else None,
-    )
+    if isinstance(error, NetworkError):
+        # 网络层错误由 Updater 自动退避重试，只打一行警告，避免整屏堆栈刷屏
+        logger.warning("Network error while polling (auto-retrying): %s", error)
+    else:
+        logger.error(
+            "Unhandled error while processing Telegram update id=%s",
+            update.update_id if update else None,
+            exc_info=(type(error), error, error.__traceback__) if error else None,
+        )
 
 
 async def log_completed_update(update, _context):
@@ -89,16 +104,41 @@ async def _retry_bot_command_sync(application):
             return
 
 
+def build_telegram_requests():
+    """构建 bot 使用的两个请求实例（普通 API 请求 / get_updates 长轮询请求）。
+
+    - 默认：强制直连（trust_env=False），忽略系统代理/环境变量代理，
+      走操作系统默认路由（本机通常是 WARP TUN 透明代理），避免 httpx
+      悄悄捡走系统代理（如 127.0.0.1:7890）导致长轮询随代理抖动断连。
+    - 设置了 TELEGRAM_PROXY（如 http://127.0.0.1:7890）：显式使用该代理。
+    """
+    proxy = os.environ.get("TELEGRAM_PROXY", "").strip()
+    if proxy:
+        logger.info("Telegram 网络路径: 显式代理 %s", proxy)
+        request = HTTPXRequest(proxy=proxy)
+        get_updates_request = HTTPXRequest(proxy=proxy, connection_pool_size=2, pool_timeout=5)
+    else:
+        logger.info("Telegram 网络路径: 直连（已忽略系统/环境变量代理，未设置 TELEGRAM_PROXY）")
+        request = HTTPXRequest(httpx_kwargs={"trust_env": False})
+        get_updates_request = HTTPXRequest(
+            httpx_kwargs={"trust_env": False},
+            connection_pool_size=2,
+            pool_timeout=5,
+        )
+    return request, get_updates_request
+
+
 def main():
     if ":" not in TELEGRAM_TOKEN:
         logger.warning("TELEGRAM_TOKEN 格式异常，Telegram Bot 未启动。")
         return
 
+    request, get_updates_request = build_telegram_requests()
     app = (
         ApplicationBuilder()
         .token(TELEGRAM_TOKEN)
-        .get_updates_connection_pool_size(2)
-        .get_updates_pool_timeout(5)
+        .request(request)
+        .get_updates_request(get_updates_request)
         .post_init(post_init)
         .build()
     )
