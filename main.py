@@ -201,7 +201,8 @@ def _enable_webhook_health_routes():
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self.add_handlers(
-                [r".*", [(r"/healthcheck", _HealthCheckHandler), (r"/$", _HealthCheckHandler)]]
+                r".*",
+                [(r"/healthcheck", _HealthCheckHandler), (r"/$", _HealthCheckHandler)],
             )
 
     _updater.WebhookAppClass = _March7WebhookApp
