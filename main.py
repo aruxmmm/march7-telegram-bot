@@ -178,6 +178,36 @@ def wait_for_telegram():
             time.sleep(15)
 
 
+def _enable_webhook_health_routes():
+    """给 PTB 的 webhook 服务补 /healthcheck 和 / 路由（GET → 200），供 Render 等平台做健康检查。
+
+    PTB 内置的 Tornado 服务默认只注册 /{token} 这一条 webhook 路由（且只收 POST），
+    其余路径全 404。Render 的部署校验/健康检查需要一个返回 200 的端点，
+    所以在起服务前把补丁注入进去。
+    """
+    import telegram.ext._updater as _updater
+    from tornado.web import RequestHandler
+
+    if getattr(_updater, "_march7_health_patched", False):
+        return
+    _OrigApp = _updater.WebhookAppClass
+
+    class _HealthCheckHandler(RequestHandler):
+        def get(self):
+            self.set_status(200)
+            self.write("ok")
+
+    class _March7WebhookApp(_OrigApp):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.add_handlers(
+                [r".*", [(r"/healthcheck", _HealthCheckHandler), (r"/$", _HealthCheckHandler)]]
+            )
+
+    _updater.WebhookAppClass = _March7WebhookApp
+    _updater._march7_health_patched = True
+
+
 def main():
     if ":" not in TELEGRAM_TOKEN:
         logger.warning("TELEGRAM_TOKEN 格式异常，Telegram Bot 未启动。")
@@ -220,6 +250,7 @@ def main():
     webhook_url = os.environ.get("WEBHOOK_URL", "").rstrip("/")
     port = int(os.environ.get("PORT", 8080))
     if webhook_url:
+        _enable_webhook_health_routes()  # 补 /healthcheck 路由，让 Render 健康检查能过
         app.run_webhook(
             listen="0.0.0.0",
             port=port,
