@@ -46,12 +46,12 @@ def update_state(user_id, text):
     return get_state(user_id)
 
 
-def apply_model_state_update(user_id, affinity_delta, emotion):
+def apply_model_state_update(user_id, affinity_delta, emotion, baseline=None):
     """验证模型建议的状态变化，再持久化保存。"""
     if not isinstance(affinity_delta, int) or not -10 <= affinity_delta <= 10:
         return get_state(user_id)
 
-    state = get_state(user_id)
+    state = dict(baseline) if baseline is not None else get_state(user_id)
     state["affinity"] = max(0, min(200, state["affinity"] + affinity_delta))
     emotion = str(emotion).strip()[:20]
     if emotion:

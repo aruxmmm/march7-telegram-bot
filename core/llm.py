@@ -24,7 +24,7 @@ _STATE_MARKER = re.compile(
 )
 
 
-def finalize_reply(reply_text, user_id):
+def finalize_reply(reply_text, user_id, state_baseline=None):
     """移除模型的状态标记，并在通过校验后写入用户状态。"""
     if not isinstance(reply_text, str):
         return reply_text
@@ -37,7 +37,7 @@ def finalize_reply(reply_text, user_id):
     if not -10 <= affinity_delta <= 10:
         return reply_text
 
-    apply_model_state_update(user_id, affinity_delta, match.group(2))
+    apply_model_state_update(user_id, affinity_delta, match.group(2), state_baseline)
     return reply_text[:match.start()].rstrip()
 
 
@@ -118,7 +118,14 @@ def get_client(provider, api_key):
 # =========================
 # ✨ 主函数
 # =========================
-def generate_reply(user_input, user_id, use_memory=True, image_data=None, image_mime_type="image/jpeg"):
+def generate_reply(
+    user_input,
+    user_id,
+    use_memory=True,
+    image_data=None,
+    image_mime_type="image/jpeg",
+    state_baseline=None,
+):
     # ===== 1. 状态 & 记忆 =====
     state = get_state(user_id)
     memory = get_memory(user_id) if use_memory else "（单次提问模式）"
@@ -173,7 +180,7 @@ def generate_reply(user_input, user_id, use_memory=True, image_data=None, image_
             image_data,
             image_mime_type,
         )
-        return finalize_reply(reply_text, user_id)
+        return finalize_reply(reply_text, user_id, state_baseline)
 
     except Exception as e:
         # ===== fallback =====
@@ -188,7 +195,7 @@ def generate_reply(user_input, user_id, use_memory=True, image_data=None, image_
                     image_data,
                     image_mime_type,
                 )
-                return finalize_reply(reply_text, user_id)
+                return finalize_reply(reply_text, user_id, state_baseline)
             except:
                 pass
 

@@ -121,8 +121,7 @@ user_api_provider = {}  # 格式: {user_id: "groq"} 或 {user_id: "gemini"}
 
 # 初始化数据库
 try:
-    from core.database import init_db, get_user_api_keys, get_user_api_provider
-    init_db()
+    from core.database import get_user_api_keys, get_user_api_provider
 except ImportError:
     print("警告：数据库模块加载失败，将使用内存存储（关机会丢失数据）")
 

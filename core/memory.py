@@ -1,6 +1,7 @@
 # 对话记忆存储（由数据库管理）
 from core.database import get_user_memory as db_get_user_memory
 from core.database import append_user_memory as db_append_user_memory
+from core.database import set_user_memory as db_set_user_memory
 from core.database import clear_user_memory as db_clear_user_memory
 from core.state import get_prompt_name
 
@@ -38,6 +39,31 @@ def update_memory(user_id, text):
         lines = memory_db[key].split('\n')[-6:]
         lines.append(text)
         memory_db[key] = "\n".join(lines)
+
+def replace_memory_entry(user_id, old_text, new_text):
+    """Replace the latest matching conversation entry without duplicating it."""
+    prompt_name = get_prompt_name(user_id)
+    current_memory = db_get_user_memory(user_id, prompt_name)
+    placeholder = "（这是本姑娘和你的新冒险！）"
+    lines = [] if current_memory == placeholder else current_memory.split("\n")
+    old_lines = old_text.split("\n") if old_text else []
+    new_lines = new_text.split("\n")
+
+    match_start = None
+    if old_lines:
+        for start in range(len(lines) - len(old_lines), -1, -1):
+            if lines[start:start + len(old_lines)] == old_lines:
+                match_start = start
+                break
+
+    if match_start is None:
+        lines = lines[-6:] + new_lines
+    else:
+        lines[match_start:match_start + len(old_lines)] = new_lines
+
+    updated_memory = "\n".join(lines)
+    db_set_user_memory(user_id, updated_memory, prompt_name)
+    memory_db[(user_id, prompt_name)] = updated_memory
 
 def clear_memory(user_id, prompt_name=None):
     """清空用户的对话记忆。可选按 prompt 清空"""

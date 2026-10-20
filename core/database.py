@@ -433,6 +433,17 @@ def append_user_memory_prompt(user_id, text, prompt_name='march7'):
     conn.commit()
     conn.close()
 
+def set_user_memory_prompt(user_id, memory_text, prompt_name='march7'):
+    """Replace the complete conversation memory for a user and prompt."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT OR REPLACE INTO user_memory_prompt (user_id, memory_text, prompt_name, updated_at)
+        VALUES (?, ?, ?, ?)
+    """, (user_id, memory_text, prompt_name, datetime.now()))
+    conn.commit()
+    conn.close()
+
 def clear_user_memory_prompt(user_id, prompt_name=None):
     """清空用户的对话记忆。
     - prompt_name=None: 清空该用户所有 prompt 的记忆（向后兼容）
@@ -593,6 +604,9 @@ def get_user_memory(user_id, prompt_name='march7'):
 
 def append_user_memory(user_id, text, prompt_name='march7'):
     return append_user_memory_prompt(user_id, text, prompt_name)
+
+def set_user_memory(user_id, memory_text, prompt_name='march7'):
+    return set_user_memory_prompt(user_id, memory_text, prompt_name)
 
 def clear_user_memory(user_id, prompt_name=None):
     return clear_user_memory_prompt(user_id, prompt_name)

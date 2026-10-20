@@ -1,3 +1,4 @@
+import asyncio
 import pkgutil
 from html import escape
 import prompt
@@ -128,6 +129,8 @@ async def ask_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def reset_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from core.memory import clear_memory
     user_id = update.message.from_user.id
+    from handlers.chat import forget_latest_chats
+    await forget_latest_chats(user_id)
     
     # 默认行为：重置记忆和状态
     if user_id in memory_db:
@@ -157,8 +160,10 @@ async def memory_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def state_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """查看当前角色的好感度与情绪状态。"""
     user_id = update.effective_user.id
-    state = get_state(user_id)
-    current_prompt = get_prompt_name(user_id)
+    state, current_prompt = await asyncio.gather(
+        asyncio.to_thread(get_state, user_id),
+        asyncio.to_thread(get_prompt_name, user_id),
+    )
 
     await update.message.reply_text(
         f"<b>当前状态（{escape(current_prompt)}）</b>\n\n"
