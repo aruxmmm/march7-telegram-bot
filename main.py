@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import time
 from telegram import BotCommand, BotCommandScopeAllGroupChats, BotCommandScopeAllPrivateChats, MenuButtonCommands, Update
 from telegram.error import NetworkError, TelegramError
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, CallbackQueryHandler, TypeHandler, filters
@@ -128,12 +129,62 @@ def build_telegram_requests():
     return request, get_updates_request
 
 
+def _probe_telegram(proxy: str) -> bool:
+    """用一次性客户端做连通性探测（与 bot 相同的网络配置，但绝不碰 bot 自己的连接池）。
+
+    注意：不能用 bot 的 HTTPXRequest 对象跑探测再交给 PTB 用——
+    跨事件循环复用 httpx 连接池会触发 'Event loop is closed'。
+    """
+    import httpx
+    if proxy:
+        client = httpx.Client(proxy=proxy, timeout=8.0)
+    else:
+        client = httpx.Client(trust_env=False, timeout=8.0)
+    with client:
+        r = client.get("https://api.telegram.org/")
+        return 200 <= r.status_code < 400
+
+
+def wait_for_telegram():
+    """启动前可达性检查：当前网络路径不通就每 15 秒重试，等网络恢复后自动放行。
+
+    PTB 自身的 bootstrap（bot.initialize 里的 get_me）不重试网络错误，
+    网络没就绪时直接让进程崩溃，所以必须在这之前挡住。
+    """
+    import httpx
+    proxy = os.environ.get("TELEGRAM_PROXY", "").strip()
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            if _probe_telegram(proxy):
+                if attempt > 1:
+                    logger.info("Telegram 已可达（第 %d 次检查通过），继续启动", attempt)
+                return
+            raise httpx.ConnectError("probe returned non-2xx/3xx")
+        except httpx.HTTPError:
+            if proxy:
+                logger.warning(
+                    "代理 %s 连不通 Telegram（第 %d 次检查），15 秒后重试，Ctrl+C 退出。"
+                    "请确认代理软件正在运行且节点可用",
+                    proxy, attempt,
+                )
+            else:
+                logger.warning(
+                    "直连连不通 Telegram（第 %d 次检查）：WARP 没开？15 秒后重试，Ctrl+C 退出。"
+                    "也可用 TELEGRAM_PROXY=http://127.0.0.1:端口 重启走代理",
+                    attempt,
+                )
+            time.sleep(15)
+
+
 def main():
     if ":" not in TELEGRAM_TOKEN:
         logger.warning("TELEGRAM_TOKEN 格式异常，Telegram Bot 未启动。")
         return
 
     request, get_updates_request = build_telegram_requests()
+    wait_for_telegram()  # 网络路径没就绪就先等，别带着 200 行堆栈崩给用户看
     app = (
         ApplicationBuilder()
         .token(TELEGRAM_TOKEN)
