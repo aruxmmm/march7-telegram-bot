@@ -3,7 +3,7 @@ import os
 from telegram import BotCommand, BotCommandScopeAllGroupChats, BotCommandScopeAllPrivateChats, MenuButtonCommands
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, CallbackQueryHandler, filters
 from config import TELEGRAM_TOKEN
-from handlers.commands import start_cmd, ask_cmd, reset_cmd, memory_cmd, resetquota_cmd, model_cmd, model_callback, set_key, prompt_cmd
+from handlers.commands import start_cmd, ask_cmd, reset_cmd, memory_cmd, state_cmd, resetquota_cmd, model_cmd, model_callback, set_key, prompt_cmd
 from handlers.help import help_cmd
 from handlers.chat import handle_normal_chat
 from handlers.stats import stats_cmd
@@ -28,6 +28,7 @@ COMMANDS = [
     BotCommand("ask", "单次快捷提问"),
     BotCommand("reset", "重置记忆和状态"),
     BotCommand("memory", "查看当前记忆"),
+    BotCommand("state", "查看当前好感度与情绪"),
     BotCommand("resetquota", "重置为公共额度"),
     BotCommand("model", "切换大脑模型"),
     BotCommand("prompt", "切换/查看/预览角色 prompt"),
@@ -54,6 +55,7 @@ def main():
     app.add_handler(CommandHandler("ask", ask_cmd))
     app.add_handler(CommandHandler("reset", reset_cmd))
     app.add_handler(CommandHandler("memory", memory_cmd))
+    app.add_handler(CommandHandler("state", state_cmd))
     app.add_handler(CommandHandler("resetquota", resetquota_cmd))
     app.add_handler(CommandHandler("model", model_cmd))
     app.add_handler(CommandHandler("prompt", prompt_cmd))

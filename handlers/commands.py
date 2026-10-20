@@ -154,6 +154,20 @@ async def memory_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def state_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """查看当前角色的好感度与情绪状态。"""
+    user_id = update.effective_user.id
+    state = get_state(user_id)
+    current_prompt = get_prompt_name(user_id)
+
+    await update.message.reply_text(
+        f"<b>当前状态（{escape(current_prompt)}）</b>\n\n"
+        f"❤️ 好感度：<code>{state.get('affinity', 80)}</code> / 200\n"
+        f"🎭 当前情绪：<code>{escape(str(state.get('emotion', '开心')))}</code>",
+        parse_mode=ParseMode.HTML
+    )
+
+
 async def resetquota_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """重置为使用公共额度"""
     user_id = update.message.from_user.id
