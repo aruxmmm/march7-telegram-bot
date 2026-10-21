@@ -1,0 +1,21 @@
+# 定时 ping：Render 免费版 15 分钟无流量会休眠，
+# 这里每 10 分钟打一次 /healthcheck 让服务保持常驻，
+# 避免 Telegram 消息撞上冷启动（~35s）导致首次推送 429/丢消息。
+# 纯公开操作，无需任何 secret。
+name: keep-alive-ping
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Pong healthcheck
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" -m 60 https://march7-telegram-bot.onrender.com/healthcheck)
+          echo "healthcheck -> HTTP $code"
+          [ "$code" = "200" ] || exit 1
