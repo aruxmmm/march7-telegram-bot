@@ -16,8 +16,12 @@ from config import (
 )
 import base64
 import importlib
+import logging
 import re
+from collections.abc import Callable, Iterable
 from core.state import get_prompt_name
+
+logger = logging.getLogger(__name__)
 
 _STATE_MARKER = re.compile(
     r"\s*\[\[\s*affinity\s*:\s*([+-]\d+)\s*;\s*emotion\s*:\s*([^\]\r\n;]{1,20})\s*\]\]\s*$"
@@ -126,6 +130,47 @@ def generate_reply(
     image_mime_type="image/jpeg",
     state_baseline=None,
 ):
+    provider, model_name, system_prompt, user_prompt = _build_reply_context(
+        user_input,
+        user_id,
+        use_memory,
+        image_data,
+    )
+
+    # ===== 4. 调用 =====
+    try:
+        reply_text = call_model(
+            provider,
+            model_name,
+            user_id,
+            system_prompt,
+            user_prompt,
+            image_data,
+            image_mime_type,
+        )
+        return finalize_reply(reply_text, user_id, state_baseline)
+
+    except Exception as e:
+        # ===== fallback =====
+        if provider != "groq":
+            try:
+                reply_text = call_model(
+                    "groq",
+                    MODEL_LIST["groq_fast"]["model"],
+                    user_id,
+                    system_prompt,
+                    user_prompt,
+                    image_data,
+                    image_mime_type,
+                )
+                return finalize_reply(reply_text, user_id, state_baseline)
+            except Exception:
+                logger.exception("Groq fallback failed after the primary model failed")
+
+        return handle_error(e)
+
+
+def _build_reply_context(user_input, user_id, use_memory, image_data):
     # ===== 1. 状态 & 记忆 =====
     state = get_state(user_id)
     memory = get_memory(user_id) if use_memory else "（单次提问模式）"
@@ -167,37 +212,61 @@ def generate_reply(
             "可以针对具体细节提问，但不要每次都问，也不要只像图像识别报告一样罗列物体。"
             "不要编造图片里看不出的信息；用户附带了问题时，优先回答问题，不要硬加闲聊。"
         )
-    user_prompt = user_input
+    return provider, model_name, system_prompt, user_input
 
-    # ===== 4. 调用 =====
+
+def generate_reply_stream(
+    user_input,
+    user_id,
+    on_chunk: Callable[[str], None],
+    on_reset: Callable[[], None],
+    use_memory=True,
+    image_data=None,
+    image_mime_type="image/jpeg",
+    state_baseline=None,
+) -> str:
+    """Generate a reply while forwarding text chunks as the model produces them."""
+    provider, model_name, system_prompt, user_prompt = _build_reply_context(
+        user_input,
+        user_id,
+        use_memory,
+        image_data,
+    )
+
     try:
-        reply_text = call_model(
+        reply_text = call_model_stream(
             provider,
             model_name,
             user_id,
             system_prompt,
             user_prompt,
+            on_chunk,
             image_data,
             image_mime_type,
         )
+        if not isinstance(reply_text, str):
+            raise TypeError("The model returned a non-text response")
         return finalize_reply(reply_text, user_id, state_baseline)
 
     except Exception as e:
-        # ===== fallback =====
         if provider != "groq":
             try:
-                reply_text = call_model(
+                on_reset()
+                reply_text = call_model_stream(
                     "groq",
                     MODEL_LIST["groq_fast"]["model"],
                     user_id,
                     system_prompt,
                     user_prompt,
+                    on_chunk,
                     image_data,
                     image_mime_type,
                 )
+                if not isinstance(reply_text, str):
+                    raise TypeError("The fallback model returned a non-text response")
                 return finalize_reply(reply_text, user_id, state_baseline)
-            except:
-                pass
+            except Exception:
+                logger.exception("Groq streaming fallback failed after the primary model failed")
 
         return handle_error(e)
 
@@ -245,6 +314,84 @@ def call_model(provider, model_name, user_id, system_prompt, user_prompt, image_
     )
 
     return response.choices[0].message.content
+
+
+def call_model_stream(
+    provider,
+    model_name,
+    user_id,
+    system_prompt,
+    user_prompt,
+    on_chunk: Callable[[str], None],
+    image_data=None,
+    image_mime_type="image/jpeg",
+) -> str:
+    api_key = get_api_key(user_id, provider)
+    client = get_client(provider, api_key)
+
+    if provider == "gemini":
+        contents = system_prompt + "\n\n" + user_prompt
+        if image_data:
+            from google.genai import types
+            contents = [
+                contents,
+                types.Part.from_bytes(data=image_data, mime_type=image_mime_type),
+            ]
+        generate_content_stream = getattr(client.models, "generate_content_stream", None)
+        if not callable(generate_content_stream):
+            raise RuntimeError("Installed Google GenAI client does not support content streaming")
+        chunks = generate_content_stream(
+            model=model_name,
+            contents=contents,
+        )
+        if not isinstance(chunks, Iterable):
+            raise TypeError("Google GenAI returned a non-iterable streaming response")
+        parts = []
+        for chunk in chunks:
+            text = chunk.text
+            if text:
+                parts.append(text)
+                on_chunk(text)
+        return "".join(parts)
+
+    user_content = user_prompt
+    if image_data:
+        encoded_image = base64.b64encode(image_data).decode("ascii")
+        user_content = [
+            {"type": "text", "text": user_prompt},
+            {
+                "type": "image_url",
+                "image_url": {"url": f"data:{image_mime_type};base64,{encoded_image}"},
+            },
+        ]
+
+    chat_api = getattr(client, "chat", None)
+    completions_api = getattr(chat_api, "completions", None)
+    create_completion = getattr(completions_api, "create", None)
+    if not callable(create_completion):
+        raise RuntimeError(f"Provider {provider} does not support chat completion streaming")
+
+    chunks = create_completion(
+        model=model_name,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
+        ],
+        temperature=0.8,
+        stream=True,
+    )
+    if not isinstance(chunks, Iterable):
+        raise TypeError(f"Provider {provider} returned a non-iterable streaming response")
+
+    parts = []
+    for chunk in chunks:
+        if not chunk.choices:
+            continue
+        text = chunk.choices[0].delta.content
+        if isinstance(text, str) and text:
+            parts.append(text)
+            on_chunk(text)
+    return "".join(parts)
 
 
 # =========================

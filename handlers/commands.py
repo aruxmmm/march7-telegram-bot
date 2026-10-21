@@ -3,13 +3,12 @@ import pkgutil
 from html import escape
 import prompt
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, BotCommand
-from telegram.constants import ParseMode, ChatAction
+from telegram.constants import ParseMode
 from telegram.ext import ContextTypes
 from telegram.error import BadRequest
 from core.state import get_state, user_model, user_state, get_prompt_name, set_prompt_name
 from core.memory import memory_db
 from core.memory import get_memory
-from core.llm import generate_reply
 from core.memory import update_memory
 from config import user_keys
 from config import MODEL_LIST, DEFAULT_MODELS, refresh_ollama_models
@@ -116,13 +115,14 @@ async def ask_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("「提问也要带上内容哦，不然本姑娘猜不到呢！」")
         return
     
-    # 发送正在输入的状态指示符
-    await context.bot.send_chat_action(
-        chat_id=update.effective_chat.id,
-        action=ChatAction.TYPING
+    from handlers.chat import stream_reply_text
+    reply_text = await stream_reply_text(
+        update,
+        context,
+        user_input,
+        update.message.from_user.id,
+        use_memory=False,
     )
-    
-    reply_text = generate_reply(user_input, update.message.from_user.id, use_memory=False)
     # 模型输出属于不可信文本；不用 HTML 解析，避免 '<'、'&' 等字符导致发送失败。
     await update.message.reply_text(f"[单次提问]\n{reply_text}")
 
