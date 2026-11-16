@@ -3,7 +3,7 @@ import logging
 import mimetypes
 import re
 import time
-from telegram import Chat, Update
+from telegram import Bot, Chat, ReplyParameters, Update
 from telegram.constants import ChatAction
 from telegram.error import BadRequest, EndPointNotFound, TelegramError
 from telegram.ext import ContextTypes
@@ -14,7 +14,98 @@ from core.database import track_user_interaction
 
 logger = logging.getLogger(__name__)
 latest_chat_by_conversation = {}
-_STATE_MARKER_PREVIEW = re.compile(r"\s*\[\[\s*affinity\b.*$", re.DOTALL)
+_CONTROL_MARKER_PREVIEW = re.compile(
+    r"\[\[\s*(?:affinity|sticker)\b.*$", re.DOTALL | re.IGNORECASE
+)
+_MARCH7_STICKER_SET = "HSR_Stickers_March_7th_by_fStikBot"
+_sticker_file_ids: list[str] | None = None
+_sticker_set_lock = asyncio.Lock()
+
+
+async def _get_march7_stickers(bot: Bot) -> list[str]:
+    global _sticker_file_ids
+    if _sticker_file_ids is not None:
+        return _sticker_file_ids
+
+    async with _sticker_set_lock:
+        if _sticker_file_ids is None:
+            logger.info("Fetching Telegram sticker set %s", _MARCH7_STICKER_SET)
+            sticker_set = await bot.get_sticker_set(_MARCH7_STICKER_SET)
+            if len(sticker_set.stickers) < 16:
+                raise ValueError(
+                    f"Sticker set {_MARCH7_STICKER_SET} has only "
+                    f"{len(sticker_set.stickers)} stickers; expected at least 16"
+                )
+            _sticker_file_ids = [sticker.file_id for sticker in sticker_set.stickers]
+            animated_count = sum(sticker.is_animated for sticker in sticker_set.stickers)
+            video_count = sum(sticker.is_video for sticker in sticker_set.stickers)
+            logger.info(
+                "Loaded Telegram sticker set %s: total=%d static=%d animated=%d video=%d",
+                _MARCH7_STICKER_SET,
+                len(sticker_set.stickers),
+                len(sticker_set.stickers) - animated_count - video_count,
+                animated_count,
+                video_count,
+            )
+    return _sticker_file_ids
+
+
+async def _send_contextual_sticker(
+    bot: Bot,
+    chat_id: int,
+    reply_message_id: int,
+    sticker_index: int | None,
+) -> None:
+    if sticker_index is None or not 0 <= sticker_index < 16:
+        logger.debug(
+            "Skipping contextual sticker send: chat_id=%s sticker_index=%s",
+            chat_id,
+            sticker_index,
+        )
+        return
+
+    stage = "sticker-set lookup"
+    try:
+        stickers = await _get_march7_stickers(bot)
+        stage = "sendSticker"
+        logger.info(
+            "Sending contextual sticker: chat_id=%s reply_message_id=%s index=%s",
+            chat_id,
+            reply_message_id,
+            sticker_index,
+        )
+        sent_message = await bot.send_sticker(
+            chat_id=chat_id,
+            sticker=stickers[sticker_index],
+            reply_parameters=ReplyParameters(message_id=reply_message_id),
+        )
+        sent_sticker = sent_message.sticker
+        logger.info(
+            "Telegram accepted contextual sticker: chat_id=%s message_id=%s index=%s "
+            "animated=%s video=%s",
+            chat_id,
+            sent_message.message_id,
+            sticker_index,
+            sent_sticker.is_animated if sent_sticker else None,
+            sent_sticker.is_video if sent_sticker else None,
+        )
+    except TelegramError as error:
+        logger.exception(
+            "Telegram %s failed: chat_id=%s reply_message_id=%s sticker_index=%s error=%s",
+            stage,
+            chat_id,
+            reply_message_id,
+            sticker_index,
+            error,
+        )
+    except (IndexError, ValueError):
+        logger.exception(
+            "Invalid sticker set or index during %s: set=%s chat_id=%s sticker_index=%s",
+            stage,
+            _MARCH7_STICKER_SET,
+            chat_id,
+            sticker_index,
+        )
 
 
 async def stream_reply_text(
@@ -26,7 +117,7 @@ async def stream_reply_text(
     image_data=None,
     image_mime_type="image/jpeg",
     state_baseline=None,
-) -> str:
+) -> tuple[str, int | None]:
     message = update.effective_message
     chat = update.effective_chat
     if not message or not chat:
@@ -51,6 +142,12 @@ async def stream_reply_text(
     def on_reset():
         loop.call_soon_threadsafe(chunks.put_nowait, ("reset", ""))
 
+    sticker_index = None
+
+    def on_sticker(index):
+        nonlocal sticker_index
+        sticker_index = index
+
     draft_enabled = is_private_chat
     draft_id = message.message_id
     draft_thread_id = getattr(message, "message_thread_id", None)
@@ -58,7 +155,7 @@ async def stream_reply_text(
 
     async def update_draft(text):
         nonlocal draft_enabled, last_draft_text
-        if not draft_enabled or text == last_draft_text:
+        if not draft_enabled or not text or text == last_draft_text:
             return
         draft_parameters = {
             "chat_id": chat.id,
@@ -97,6 +194,7 @@ async def stream_reply_text(
             image_data,
             image_mime_type,
             state_baseline,
+            on_sticker,
         )
     )
     visible_parts = []
@@ -130,7 +228,7 @@ async def stream_reply_text(
             await show_typing_status()
             last_action = now
         elif visible_parts and not generation_task.done() and now - last_draft_update >= 0.5:
-            preview = _STATE_MARKER_PREVIEW.sub("", "".join(visible_parts))[:4096]
+            preview = _CONTROL_MARKER_PREVIEW.sub("", "".join(visible_parts))[:4096]
             await update_draft(preview)
             last_draft_update = now
 
@@ -142,7 +240,13 @@ async def stream_reply_text(
         if generation_task.done() and chunks.empty():
             break
 
-    return await generation_task
+    reply_text = await generation_task
+    logger.info(
+        "Model sticker decision completed: chat_id=%s sticker_index=%s",
+        chat.id,
+        sticker_index,
+    )
+    return reply_text, sticker_index
 
 
 async def _track_interaction(update):
@@ -227,7 +331,7 @@ async def handle_normal_chat(update: Update, context: ContextTypes.DEFAULT_TYPE)
     )
 
     state_baseline = dict(await asyncio.to_thread(get_state, user_id))
-    reply_text = await stream_reply_text(
+    reply_text, sticker_index = await stream_reply_text(
         update,
         context,
         user_input,
@@ -238,6 +342,16 @@ async def handle_normal_chat(update: Update, context: ContextTypes.DEFAULT_TYPE)
     )
 
     sent_message = await message.reply_text(reply_text)
+    context.application.create_task(
+        _send_contextual_sticker(
+            context.bot,
+            chat.id,
+            sent_message.message_id,
+            sticker_index,
+        ),
+        update=update,
+        name="send-contextual-march7-sticker",
+    )
     persist_task = context.application.create_task(
         _persist_memory(user_id, user_input, reply_text, image_data, bool(message.sticker)),
         update=update,
@@ -283,6 +397,11 @@ async def regenerate_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     previous_entry = (
         await persist_task if persist_task else latest_chat["memory_entry"]
     )
+    selected_stickers = []
+
+    def remember_sticker(index):
+        selected_stickers.append(index)
+
     reply_text = await asyncio.to_thread(
         generate_reply,
         latest_chat["user_input"],
@@ -290,6 +409,7 @@ async def regenerate_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         image_data=image_data,
         image_mime_type=latest_chat["image_mime_type"],
         state_baseline=latest_chat["state_baseline"],
+        on_sticker=remember_sticker,
     )
     current_prompt = await asyncio.to_thread(get_prompt_name, user_id)
     media_label = "贴纸" if latest_chat["is_sticker"] else "图片"
@@ -306,6 +426,14 @@ async def regenerate_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except BadRequest:
         logger.exception("Failed to edit regenerated reply; sending it as a new message")
         sent_message = await message.reply_text(reply_text)
+
+    if selected_stickers:
+        await _send_contextual_sticker(
+            context.bot,
+            chat.id,
+            sent_message.message_id,
+            selected_stickers[0],
+        )
 
     persisted_entry = previous_entry
     try:

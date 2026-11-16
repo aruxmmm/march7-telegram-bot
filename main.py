@@ -70,8 +70,14 @@ async def log_incoming_update(update, _context):
 async def log_update_error(update, context):
     error = context.error
     if isinstance(error, NetworkError):
-        # 网络层错误由 Updater 自动退避重试，只打一行警告，避免整屏堆栈刷屏
-        logger.warning("Network error while polling (auto-retrying): %s", error)
+        if update is None:
+            logger.warning("Network error while polling (auto-retrying): %s", error)
+        else:
+            logger.warning(
+                "Telegram network error while processing update id=%s: %s",
+                update.update_id,
+                error,
+            )
     else:
         logger.error(
             "Unhandled error while processing Telegram update id=%s",

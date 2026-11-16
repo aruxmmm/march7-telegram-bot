@@ -26,6 +26,22 @@ logger = logging.getLogger(__name__)
 _STATE_MARKER = re.compile(
     r"\s*\[\[\s*affinity\s*:\s*([+-]\d+)\s*;\s*emotion\s*:\s*([^\]\r\n;]{1,20})\s*\]\]\s*$"
 )
+_STICKER_MARKER = re.compile(
+    r"\[\[\s*sticker\s*:\s*(\d+)\s*\]\]",
+    re.IGNORECASE,
+)
+_EXPLICIT_STICKER_REQUEST = re.compile(
+    r"(?:给我|帮我|请)?\s*(?:发|发送|来)\s*(?:我)?\s*(?:一个|一张|个|张)?"
+    r"\s*(?:三月七)?(?:的)?\s*(?:贴纸|表情包)"
+    r"|(?:贴纸|表情包).{0,6}(?:发一个|发一张|来一个|来一张|给我)"
+    r"|\b(?:send|give)\s+(?:me\s+)?(?:a\s+)?(?:sticker|sticker pack)\b",
+    re.IGNORECASE,
+)
+_EXPLICIT_STICKER_OPT_OUT = re.compile(
+    r"(?:不要|别|不用|不需要|不想要).{0,8}(?:发|发送|贴纸|表情包)"
+    r"|(?:don't|do not)\s+(?:send|give me)\s+(?:a\s+)?sticker",
+    re.IGNORECASE,
+)
 
 
 def finalize_reply(reply_text, user_id, state_baseline=None):
@@ -43,6 +59,43 @@ def finalize_reply(reply_text, user_id, state_baseline=None):
 
     apply_model_state_update(user_id, affinity_delta, match.group(2), state_baseline)
     return reply_text[:match.start()].rstrip()
+
+
+def _finalize_generated_reply(
+    reply_text,
+    user_id,
+    state_baseline,
+    on_sticker,
+    user_input,
+):
+    if not isinstance(reply_text, str):
+        return finalize_reply(reply_text, user_id, state_baseline)
+
+    matches = list(_STICKER_MARKER.finditer(reply_text))
+    sticker_index = next(
+        (int(match.group(1)) for match in matches if 0 <= int(match.group(1)) < 16),
+        None,
+    )
+    if isinstance(user_input, str) and _EXPLICIT_STICKER_OPT_OUT.search(user_input):
+        if sticker_index is not None:
+            logger.warning("Model selected a sticker despite the user's explicit opt-out")
+        sticker_index = None
+    elif (
+        sticker_index is None
+        and isinstance(user_input, str)
+        and _EXPLICIT_STICKER_REQUEST.search(user_input)
+    ):
+        sticker_index = 15
+        logger.warning(
+            "Model omitted the sticker marker for an explicit request; using fallback sticker index=%s",
+            sticker_index,
+        )
+
+    if matches:
+        reply_text = _STICKER_MARKER.sub("", reply_text).strip()
+    if sticker_index is not None and on_sticker:
+        on_sticker(sticker_index)
+    return finalize_reply(reply_text, user_id, state_baseline)
 
 
 # 数据库支持（可选）
@@ -129,6 +182,7 @@ def generate_reply(
     image_data=None,
     image_mime_type="image/jpeg",
     state_baseline=None,
+    on_sticker: Callable[[int], None] | None = None,
 ):
     provider, model_name, system_prompt, user_prompt = _build_reply_context(
         user_input,
@@ -148,7 +202,9 @@ def generate_reply(
             image_data,
             image_mime_type,
         )
-        return finalize_reply(reply_text, user_id, state_baseline)
+        return _finalize_generated_reply(
+            reply_text, user_id, state_baseline, on_sticker, user_input
+        )
 
     except Exception as e:
         # ===== fallback =====
@@ -163,7 +219,9 @@ def generate_reply(
                     image_data,
                     image_mime_type,
                 )
-                return finalize_reply(reply_text, user_id, state_baseline)
+                return _finalize_generated_reply(
+                    reply_text, user_id, state_baseline, on_sticker, user_input
+                )
             except Exception:
                 logger.exception("Groq fallback failed after the primary model failed")
 
@@ -212,6 +270,17 @@ def _build_reply_context(user_input, user_id, use_memory, image_data):
             "可以针对具体细节提问，但不要每次都问，也不要只像图像识别报告一样罗列物体。"
             "不要编造图片里看不出的信息；用户附带了问题时，优先回答问题，不要硬加闲聊。"
         )
+    system_prompt += """
+
+【表情包发送决策】
+你要根据当前对话决定是否发送一张三月七表情包。用户明确要求发贴纸或表情包时，必须发送一张最合适的贴纸；用户明确说不要贴纸时，不要发送。其他情况下，只有在贴纸能自然加强互动时才发送；普通问答、严肃或敏感话题、发送会显得突兀时不要发送。
+若决定发送，请在正常回复后另起一行输出一个控制标记，格式必须严格为 [[sticker:N]]，N 为以下编号之一；只能选择一张：
+0：拍照俏皮眨眼；1：分享糖果、温柔安慰；2：兴奋欢呼；3：拿相机害羞；
+4：点赞认可；5：开心戴爱心墨镜；6：闭眼平静微笑；7：兴奋展示战利品；
+8：唱歌热情回应；9：哭泣委屈；10：紧张冒汗；11：生气嘟嘴；
+12：生日蛋糕庆祝；13：举相机拍照；14：疲惫犯困；15：可爱开心举手。
+控制标记只供程序读取，不要解释或在回复正文中展示；若有好感度/情绪标记，sticker 标记必须放在它之前。不发送贴纸时不要输出 sticker 标记。
+"""
     return provider, model_name, system_prompt, user_input
 
 
@@ -224,6 +293,7 @@ def generate_reply_stream(
     image_data=None,
     image_mime_type="image/jpeg",
     state_baseline=None,
+    on_sticker: Callable[[int], None] | None = None,
 ) -> str:
     """Generate a reply while forwarding text chunks as the model produces them."""
     provider, model_name, system_prompt, user_prompt = _build_reply_context(
@@ -246,7 +316,9 @@ def generate_reply_stream(
         )
         if not isinstance(reply_text, str):
             raise TypeError("The model returned a non-text response")
-        return finalize_reply(reply_text, user_id, state_baseline)
+        return _finalize_generated_reply(
+            reply_text, user_id, state_baseline, on_sticker, user_input
+        )
 
     except Exception as e:
         if provider != "groq":
@@ -264,7 +336,9 @@ def generate_reply_stream(
                 )
                 if not isinstance(reply_text, str):
                     raise TypeError("The fallback model returned a non-text response")
-                return finalize_reply(reply_text, user_id, state_baseline)
+                return _finalize_generated_reply(
+                    reply_text, user_id, state_baseline, on_sticker, user_input
+                )
             except Exception:
                 logger.exception("Groq streaming fallback failed after the primary model failed")
 

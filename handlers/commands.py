@@ -115,8 +115,8 @@ async def ask_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("「提问也要带上内容哦，不然本姑娘猜不到呢！」")
         return
     
-    from handlers.chat import stream_reply_text
-    reply_text = await stream_reply_text(
+    from handlers.chat import _send_contextual_sticker, stream_reply_text
+    reply_text, sticker_index = await stream_reply_text(
         update,
         context,
         user_input,
@@ -124,7 +124,14 @@ async def ask_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         use_memory=False,
     )
     # 模型输出属于不可信文本；不用 HTML 解析，避免 '<'、'&' 等字符导致发送失败。
-    await update.message.reply_text(f"[单次提问]\n{reply_text}")
+    sent_message = await update.message.reply_text(f"[单次提问]\n{reply_text}")
+    if update.effective_chat:
+        await _send_contextual_sticker(
+            context.bot,
+            update.effective_chat.id,
+            sent_message.message_id,
+            sticker_index,
+        )
 
 async def reset_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     from core.memory import clear_memory
